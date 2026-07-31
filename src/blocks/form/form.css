@@ -1,0 +1,10 @@
+/* Functional styles only: the honeypot must be visually hidden or humans
+   would fill it in and be silently dropped as bots. All visual styling of the
+   form belongs to the site (see the class contract in the README). */
+.form .form-honeypot {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}

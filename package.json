@@ -1,0 +1,33 @@
+{
+  "name": "@airspeed-co/avionics",
+  "version": "0.1.0",
+  "description": "Shared structural core for Airspeed Co. websites: form blocks, validation, head baking, and the Cloudflare Worker contact handler. Ships raw Preact + TypeScript source; the consuming site's Vite compiles it.",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/airspeed-co/avionics.git"
+  },
+  "files": ["src", "README.md", "LICENSE"],
+  "sideEffects": ["**/*.css"],
+  "exports": {
+    "./blocks": "./src/blocks/index.ts",
+    "./domain/form": "./src/domain/form/index.ts",
+    "./domain/contact-form": "./src/domain/contact-form/index.ts",
+    "./hooks/use-head": "./src/hooks/use-head.ts",
+    "./utils/validation": "./src/utils/validation.ts",
+    "./utils/class-names": "./src/utils/class-names.ts",
+    "./worker": "./src/worker/index.ts"
+  },
+  "scripts": {
+    "check": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.worker.json"
+  },
+  "peerDependencies": {
+    "preact": "^10.29.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260730.1",
+    "preact": "^10.29.7",
+    "typescript": "^6.0.3"
+  }
+}

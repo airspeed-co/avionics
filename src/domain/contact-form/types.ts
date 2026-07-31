@@ -1,0 +1,30 @@
+/**
+ * Contact form field names
+ */
+export type ContactFormKey = "name" | "email" | "message";
+
+/**
+ * Contact form
+ */
+export type ContactFormData = Record<ContactFormKey, string>;
+
+/**
+ * Every customer-facing string the contact form renders, defined per locale in
+ * the content layer (src/content). Validation messages may hold a {n}
+ * placeholder for the length bound.
+ */
+export interface ContactFormCopy {
+  labels: Record<ContactFormKey, string>;
+  submit: string;
+  sending: string;
+  success: string;
+  errorFallback: string;
+  validation: {
+    required: string;
+    email: string;
+    min: string;
+    max: string;
+    /** Message shown when the message field has too few words. */
+    words: string;
+  };
+}
