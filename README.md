@@ -14,14 +14,14 @@ npm install @airspeed-co/avionics preact
 
 ## Entry points
 
+One level deep, one entry per runtime concern. `blocks` and `hooks` are browser-only (preact, CSS); `domain` and `utils` are pure and safe in both runtimes; `worker` is worker-only. They stay separate so the Worker bundle never pulls preact or CSS, and importing a helper never drags block styles along.
+
 | Import | Contents |
 | :-- | :-- |
 | `@airspeed-co/avionics/blocks` | `Button`, `Form`, `FormField`, `Picture` |
-| `@airspeed-co/avionics/domain/form` | `FieldConfig`, `Validation`, `validateForm` |
-| `@airspeed-co/avionics/domain/contact-form` | `buildContactFormFields`, contact form types |
-| `@airspeed-co/avionics/hooks/use-head` | `useTitle`, `useDescription`, `useJsonLd`, `useNoindex`, `useAlternateLanguage`, prerender capture helpers |
-| `@airspeed-co/avionics/utils/validation` | validation factories (required, email, length, words) |
-| `@airspeed-co/avionics/utils/class-names` | `classNames` helper |
+| `@airspeed-co/avionics/domain` | `FieldConfig`, `Validation`, `validateForm`, `buildContactFormFields`, contact form types |
+| `@airspeed-co/avionics/hooks` | `useTitle`, `useDescription`, `useJsonLd`, `useNoindex`, `useAlternateLanguage`, prerender capture helpers |
+| `@airspeed-co/avionics/utils` | `classNames`, validation factories (required, email, length, words) |
 | `@airspeed-co/avionics/worker` | `createContactHandler`, `sendEmail`, `rewriteOpenGraph`, `ContactEnv` |
 
 ## What the site owns

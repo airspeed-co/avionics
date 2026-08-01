@@ -8,25 +8,31 @@
     "type": "git",
     "url": "git+https://github.com/airspeed-co/avionics.git"
   },
-  "files": ["src", "README.md", "LICENSE"],
-  "sideEffects": ["**/*.css"],
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": [
+    "**/*.css"
+  ],
   "exports": {
     "./blocks": "./src/blocks/index.ts",
-    "./domain/form": "./src/domain/form/index.ts",
-    "./domain/contact-form": "./src/domain/contact-form/index.ts",
-    "./hooks/use-head": "./src/hooks/use-head.ts",
-    "./utils/validation": "./src/utils/validation.ts",
-    "./utils/class-names": "./src/utils/class-names.ts",
+    "./domain": "./src/domain/index.ts",
+    "./hooks": "./src/hooks/index.ts",
+    "./utils": "./src/utils/index.ts",
     "./worker": "./src/worker/index.ts"
   },
   "scripts": {
-    "check": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.worker.json"
+    "check": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.worker.json",
+    "spellcheck": "cspell \"**/*.{ts,tsx,js,jsx,json,md}\""
   },
   "peerDependencies": {
     "preact": "^10.29.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260730.1",
+    "cspell": "^10.0.1",
     "preact": "^10.29.7",
     "typescript": "^6.0.3"
   }
