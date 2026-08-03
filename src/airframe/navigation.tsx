@@ -14,6 +14,10 @@ export interface ClientNavigationOptions {
    *  keeps the browser's default behavior. Receives the raw pathname, so the
    *  site strips any locale prefix itself. */
   isPageRoute: (pathname: string) => boolean;
+  /** Locale for a pathname, mirrored onto the html lang attribute after each
+   *  swap so navigation across locale prefixes keeps the document truthful.
+   *  Omit for single-locale sites. */
+  localeOf?: (pathname: string) => string;
 }
 
 /**
@@ -29,7 +33,7 @@ export function enableClientNavigation(
   root: Element,
   options: ClientNavigationOptions,
 ) {
-  const { renderApp, defaultTitle, isPageRoute } = options;
+  const { renderApp, defaultTitle, isPageRoute, localeOf } = options;
 
   const renderRoute = () => {
     // The head hooks capture the title as the route renders (render is
@@ -37,6 +41,10 @@ export function enableClientNavigation(
     resetServerHead(defaultTitle);
     render(renderApp(location.pathname), root);
     document.title = takeServerTitle();
+
+    if (localeOf) {
+      document.documentElement.lang = localeOf(location.pathname);
+    }
   };
 
   // WebKit animates programmatic scrolls despite behavior: "instant" when the

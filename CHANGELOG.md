@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Airframe entry point (`./airframe`): the shared container layer for prerendered MPA sites with instant client-side navigation.
   - `createSiteEntry` wires a site's entry module: hydrates the app, enables client navigation, and returns the `prerender` function with head baking.
-  - `enableClientNavigation` intercepts internal page-link clicks and re-renders the app in place (unanimated, native-app feel); non-page links, downloads, modified clicks, and external origins keep browser behavior.
+  - `enableClientNavigation` intercepts internal page-link clicks and re-renders the app in place; non-page links, downloads, modified clicks, and external origins keep browser behavior. Swaps land at the top instantly like a real page load; hash links then scroll to their target with the site's CSS scroll-behavior deciding the feel. The html lang follows the locale across swaps (`localeOf`).
   - `definePages` builds `resolvePage`/`isPageRoute` from a pathname → component map.
 - `preact-iso` is now a peer dependency (used by `createSiteEntry` for prerendering).
 
