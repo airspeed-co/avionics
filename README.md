@@ -7,10 +7,10 @@ Ships raw Preact + TypeScript source with no build step: the consuming site's Vi
 ## Install
 
 ```bash
-npm install @airspeed-co/avionics preact
+npm install @airspeed-co/avionics preact preact-iso
 ```
 
-`preact` is a peer dependency; the site must provide exactly one copy or hooks break.
+`preact` and `preact-iso` are peer dependencies; the site must provide exactly one copy of preact or hooks break.
 
 ## Entry points
 
@@ -23,6 +23,27 @@ One level deep, one entry per runtime concern. `blocks` and `hooks` are browser-
 | `@airspeed-co/avionics/hooks` | `useTitle`, `useDescription`, `useJsonLd`, `useNoindex`, `useAlternateLanguage`, prerender capture helpers |
 | `@airspeed-co/avionics/utils` | `classNames`, validation factories (required, email, length, words) |
 | `@airspeed-co/avionics/worker` | `createContactHandler`, `sendEmail`, `rewriteOpenGraph`, `ContactEnv` |
+| `@airspeed-co/avionics/airframe` | `createSiteEntry`, `definePages`, `enableClientNavigation` |
+
+## Airframe
+
+The container layer: full-hydration MPA with instant client navigation. Every route prerenders to static HTML (SEO and first loads never depend on JavaScript); after hydration, clicks on internal page links re-render the app in place with no animation, like a native app, while non-page links, downloads, and modified clicks keep browser behavior. A site's entry module becomes configuration:
+
+```tsx
+// site: src/routes.tsx
+export const { resolvePage, isPageRoute } = definePages(
+  { "/": Home, "/contact": Contact },
+  NotFound,
+);
+
+// site: src/index.tsx
+export const { prerender } = createSiteEntry({
+  renderApp: (url) => <App url={url} />,
+  defaultTitle: formatTitle(),
+  isPageRoute: (pathname) => isPageRoute(splitLocale(pathname).pathname),
+  localeOf: (url) => splitLocale(url).locale,
+});
+```
 
 ## What the site owns
 
