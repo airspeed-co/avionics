@@ -8,7 +8,15 @@ class OpenGraphUrls {
     if (key === "og:url") {
       element.setAttribute("content", `${this.origin}/`);
     } else if (key === "og:image" || key === "twitter:image") {
-      element.setAttribute("content", `${this.origin}/og-image.jpg`);
+      const content = element.getAttribute("content");
+
+      if (content) {
+        // Keep whatever path the document declares (filename and extension
+        // are the site's choice) and swap only the host.
+        const { pathname, search } = new URL(content, this.origin);
+
+        element.setAttribute("content", `${this.origin}${pathname}${search}`);
+      }
     }
   }
 }
