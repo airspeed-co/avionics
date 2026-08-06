@@ -17,9 +17,11 @@ export interface FieldConfig<Key extends string = string> {
   name: Key;
   label: string;
   /** Control to render. Defaults to a "text" input. */
-  control?: "text" | "email" | "textarea";
+  control?: "text" | "email" | "tel" | "textarea";
   /** Row count when the control is a textarea. */
   rows?: number;
+  /** Hint text shown inside the empty control. */
+  placeholder?: string;
   validations: Validation[];
   autocomplete?: AutoFill;
 }

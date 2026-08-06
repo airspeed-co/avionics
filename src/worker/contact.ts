@@ -1,3 +1,4 @@
+import type { ContactFormKey } from "../domain/contact-form";
 import type { FieldConfig } from "../domain/form";
 import { validateForm } from "../domain/form";
 import { sendEmail } from "./send-email";
@@ -6,6 +7,7 @@ import type { ApiErrorResponse, ApiSuccessResponse, ContactEnv } from "./types";
 interface ContactPayload {
   name?: string;
   email?: string;
+  phone?: string;
   message?: string;
   company?: string; // honeypot
 }
@@ -22,9 +24,7 @@ function json(body: ApiSuccessResponse | ApiErrorResponse, status: number) {
  * server-side validation (the site builds them from its contact-form copy);
  * addresses come from the env bindings (see ContactEnv).
  */
-export function createContactHandler(
-  fields: FieldConfig<"name" | "email" | "message">[],
-) {
+export function createContactHandler(fields: FieldConfig<ContactFormKey>[]) {
   return async function handleContact(
     request: Request,
     env: ContactEnv,
@@ -53,7 +53,16 @@ export function createContactHandler(
 
     const name = payload.name?.trim() ?? "";
     const email = payload.email?.trim() ?? "";
+    const phone = payload.phone?.trim() ?? "";
     const message = payload.message?.trim() ?? "";
+
+    const lines = [`Name: ${name}`, `Email: ${email}`];
+
+    if (phone) {
+      lines.push(`Phone: ${phone}`);
+    }
+
+    lines.push("", message);
 
     // Reply-To is the submitter, so replying in the inbox reaches them; the
     // From stays on the verified domain (CONTACT_FROM_NAME shows the brand).
@@ -67,7 +76,7 @@ export function createContactHandler(
         to: env.CONTACT_TO,
         replyTo: email,
         subject: `Contact form: ${name}`,
-        text: [`Name: ${name}`, `Email: ${email}`, "", message].join("\n"),
+        text: lines.join("\n"),
       });
     } catch (err) {
       console.error("Failed to send contact email:", err);

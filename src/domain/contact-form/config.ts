@@ -19,7 +19,7 @@ const withCount = (template: string, count: number) =>
 export function buildContactFormFields(
   copy: ContactFormCopy,
 ): FieldConfig<ContactFormKey>[] {
-  const { labels, validation } = copy;
+  const { labels, placeholders, validation } = copy;
   const required = requiredValidation(validation.required);
 
   return [
@@ -50,10 +50,24 @@ export function buildContactFormFields(
       ],
     },
     {
+      // Optional: no required validation, so an empty value passes.
+      name: "phone",
+      label: labels.phone,
+      control: "tel",
+      autocomplete: "tel",
+      validations: [
+        lengthValidation({
+          max: 30,
+          maxMessage: withCount(validation.max, 30),
+        }),
+      ],
+    },
+    {
       name: "message",
       label: labels.message,
       control: "textarea",
       rows: 6,
+      placeholder: placeholders.message,
       validations: [
         required,
         wordsValidation(3, validation.words),

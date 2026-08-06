@@ -68,6 +68,7 @@ export function Form<Key extends string>(props: FormProperties<Key>) {
               name={field.name}
               rows={field.rows}
               value={form[field.name]}
+              placeholder={field.placeholder}
               autocomplete={field.autocomplete}
               onInput={setField(field.name)}
               onBlur={blurField(field.name)}
@@ -78,6 +79,7 @@ export function Form<Key extends string>(props: FormProperties<Key>) {
               name={field.name}
               type={field.control ?? "text"}
               value={form[field.name]}
+              placeholder={field.placeholder}
               autocomplete={field.autocomplete}
               onInput={setField(field.name)}
               onBlur={blurField(field.name)}

@@ -1,7 +1,8 @@
 /**
- * Contact form field names
+ * Contact form field names. The phone field is optional for the visitor;
+ * the rest are required (see buildContactFormFields).
  */
-export type ContactFormKey = "name" | "email" | "message";
+export type ContactFormKey = "name" | "email" | "phone" | "message";
 
 /**
  * Contact form
@@ -15,6 +16,10 @@ export type ContactFormData = Record<ContactFormKey, string>;
  */
 export interface ContactFormCopy {
   labels: Record<ContactFormKey, string>;
+  placeholders: {
+    /** Hint inside the empty message box prompting what to write. */
+    message: string;
+  };
   submit: string;
   sending: string;
   success: string;
