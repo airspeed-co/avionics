@@ -57,6 +57,28 @@ export function useDescription(content: string) {
   });
 }
 
+/**
+ * Bakes the route's social share preview (Open Graph and Twitter title and
+ * description) at prerender time, sourced from the site's content layer so
+ * link previews match the route's locale. Site-wide share tags that don't
+ * vary by route (og:site_name, og:url, og:image, twitter:card) stay in the
+ * site's HTML shell.
+ */
+export function useSocialPreview(title: string, description: string) {
+  serverElements.push(
+    { type: "meta", props: { property: "og:title", content: title } },
+    {
+      type: "meta",
+      props: { property: "og:description", content: description },
+    },
+    { type: "meta", props: { name: "twitter:title", content: title } },
+    {
+      type: "meta",
+      props: { name: "twitter:description", content: description },
+    },
+  );
+}
+
 /** Bakes a hreflang alternate link so search engines pair the locales. */
 export function useAlternateLanguage(hreflang: string, href: string) {
   serverElements.push({
