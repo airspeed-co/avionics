@@ -17,6 +17,8 @@ interface PictureProps {
   /** Variant widths that exist on disk. Must match the script's widths. */
   widths?: number[];
   loading?: "lazy" | "eager";
+  /** Set "high" on the LCP image so the browser fetches it ahead of other resources. */
+  fetchpriority?: "high" | "low" | "auto";
 }
 
 export const Picture: FunctionComponent<PictureProps> = ({
@@ -27,6 +29,7 @@ export const Picture: FunctionComponent<PictureProps> = ({
   sizes,
   widths = [480, 960],
   loading = "lazy",
+  fetchpriority,
 }) => {
   const sourceSet = (extension: string) =>
     widths.map((w) => `${name}-${w}.${extension} ${w}w`).join(", ");
@@ -43,6 +46,7 @@ export const Picture: FunctionComponent<PictureProps> = ({
         width={width}
         height={height}
         loading={loading}
+        fetchpriority={fetchpriority}
         decoding="async"
       />
     </picture>
