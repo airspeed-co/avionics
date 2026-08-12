@@ -79,6 +79,17 @@ export function useSocialPreview(title: string, description: string) {
   );
 }
 
+/**
+ * Bakes the route's self-referencing canonical link, so URL variants (host,
+ * protocol, trailing slash) collapse to the one declared URL.
+ */
+export function useCanonical(href: string) {
+  serverElements.push({
+    type: "link",
+    props: { rel: "canonical", href },
+  });
+}
+
 /** Bakes a hreflang alternate link so search engines pair the locales. */
 export function useAlternateLanguage(hreflang: string, href: string) {
   serverElements.push({
