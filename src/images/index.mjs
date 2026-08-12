@@ -6,9 +6,13 @@
  *
  * The site passes a manifest mapping output base names to entries; the engine
  * emits `${name}-${width}.${format}` files into the output directory, e.g.
- * portrait.jpg -> portrait-480.avif, portrait-480.jpg. The <Picture> block
- * builds its srcset from these names, so its `widths`/`formats` props must
- * match the entry.
+ * portrait.jpg -> portrait-480.avif, portrait-480.jpg. With `manifestPath`
+ * set it also writes a JSON module recording, per entry, the variants that
+ * actually exist and their intrinsic dimensions; the site feeds that JSON to
+ * provideImageManifest so the <Picture> block renders from generated truth
+ * instead of hand-kept props. checkImages verifies the JSON and the output
+ * files are current without needing sharp, so builds can fail fast when
+ * someone forgets to rerun the generator.
  *
  * The output directory is fully owned by the engine: stale files are deleted,
  * so sites can gitignore it and treat the manifest as the source of truth.
@@ -21,7 +25,8 @@
  * first: sips -s format jpeg photo.heic --out photo.jpg
  */
 
-import { mkdir, readdir, unlink } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { mkdir, readdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import sharp from "sharp";
@@ -60,8 +65,24 @@ import sharp from "sharp";
  *   deleted
  * @property {Record<string, ImageEntry>} images manifest keyed by output base
  *   name
+ * @property {string} [manifestPath] where to write the generated JSON manifest
+ *   the <Picture> block consumes; omit to skip writing it
+ * @property {string} [publicPath] URL prefix the output directory is served
+ *   under, recorded in the generated manifest. Defaults to `outputDir` with a
+ *   leading "public/" stripped, e.g. "public/images" -> "/images".
  * @property {number[]} [defaultWidths] widths for entries without their own
  * @property {Format[]} [defaultFormats] formats for entries without their own
+ */
+
+/**
+ * @typedef {object} ManifestEntry
+ * @property {number[]} widths variants that actually exist on disk (upscale
+ *   skips excluded)
+ * @property {string[]} formats output formats, <img> fallback last
+ * @property {number} width intrinsic width of the largest variant
+ * @property {number} height intrinsic height of the largest variant
+ * @property {string} fingerprint hash of the source bytes and entry config,
+ *   compared by checkImages to detect stale outputs
  */
 
 /** @type {Record<Format, { toFormat: "avif" | "jpeg" | "png" | "webp", options: object }>} */
@@ -103,6 +124,36 @@ function cropRegion(source, crop) {
 }
 
 /**
+ * URL prefix for a served output directory: "public/images" -> "/images".
+ *
+ * @param {string} outputDir
+ */
+function defaultPublicPath(outputDir) {
+  const normalized = path.normalize(outputDir).split(path.sep).join("/");
+
+  return "/" + normalized.replace(/^public\//, "").replace(/^\/+/, "");
+}
+
+/**
+ * Fingerprint of everything that determines an entry's outputs: the source
+ * file's bytes plus the resolved config. checkImages recomputes this without
+ * sharp, so a changed source, crop, width list, or format list all read as
+ * stale.
+ *
+ * @param {string} sourcePath
+ * @param {ImageEntry} entry
+ * @param {object} resolved the entry's effective widths/formats/publicPath
+ */
+async function entryFingerprint(sourcePath, entry, resolved) {
+  const hash = createHash("sha256");
+
+  hash.update(await readFile(sourcePath));
+  hash.update(JSON.stringify({ entry, resolved }));
+
+  return hash.digest("hex").slice(0, 16);
+}
+
+/**
  * Validates the manifest against the source directory and throws on drift in
  * either direction, listing every offender.
  *
@@ -119,7 +170,8 @@ function checkDrift(sourceDir, images, sourceFiles) {
   const problems = [
     ...missing.map((item) => `manifest entry has no source file: ${item}`),
     ...unclaimed.map(
-      (file) => `source file has no manifest entry: ${path.join(sourceDir, file)}`,
+      (file) =>
+        `source file has no manifest entry: ${path.join(sourceDir, file)}`,
     ),
   ];
 
@@ -140,6 +192,8 @@ export async function generateImages({
   sourceDir,
   outputDir,
   images,
+  manifestPath,
+  publicPath,
   defaultWidths = [480, 960],
   defaultFormats = ["avif", "jpg"],
 }) {
@@ -150,7 +204,10 @@ export async function generateImages({
   checkDrift(sourceDir, images, sourceFiles);
   await mkdir(outputDir, { recursive: true });
 
+  const basePath = publicPath ?? defaultPublicPath(outputDir);
   const expected = new Set();
+  /** @type {Record<string, ManifestEntry>} */
+  const manifestImages = {};
 
   for (const [name, entry] of Object.entries(images)) {
     const widths = entry.widths ?? defaultWidths;
@@ -186,6 +243,9 @@ export async function generateImages({
       );
     }
 
+    const emittedWidths = [];
+    let largest = { width: 0, height: 0 };
+
     for (const width of widths) {
       if (!isVector && width > available) {
         console.warn(
@@ -200,19 +260,41 @@ export async function generateImages({
             density: (svgBaseDensity * width) / metadata.width,
           }).resize(width);
 
+      emittedWidths.push(width);
+
       for (const format of formats) {
         const { toFormat, options } = formatSettings[format];
         const outputName = `${name}-${width}.${format}`;
         const outputPath = path.join(outputDir, outputName);
-        const { size } = await variant
+        const info = await variant
           .clone()
           .toFormat(toFormat, options)
           .toFile(outputPath);
 
+        if (info.width > largest.width) {
+          largest = { width: info.width, height: info.height };
+        }
+
         expected.add(outputName);
-        console.log(`${outputPath} (${Math.round(size / 1024)} KB)`);
+        console.log(`${outputPath} (${Math.round(info.size / 1024)} KB)`);
       }
     }
+
+    if (emittedWidths.length === 0) {
+      throw new Error(`"${name}": no variant fits the source; nothing emitted`);
+    }
+
+    manifestImages[name] = {
+      widths: emittedWidths,
+      formats,
+      width: largest.width,
+      height: largest.height,
+      fingerprint: await entryFingerprint(sourcePath, entry, {
+        widths,
+        formats,
+        basePath,
+      }),
+    };
   }
 
   for (const file of await readdir(outputDir)) {
@@ -221,4 +303,95 @@ export async function generateImages({
       console.log(`${path.join(outputDir, file)} deleted (stale)`);
     }
   }
+
+  if (manifestPath) {
+    const manifest = { basePath, images: manifestImages };
+
+    await writeFile(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
+    console.log(`${manifestPath} written`);
+  }
+}
+
+/**
+ * Verifies the generated manifest and output files are current with the
+ * sources and config, throwing with a "run npm run images" pointer when not.
+ * Recomputes only fingerprints (no sharp), so it is cheap enough to gate every
+ * build.
+ *
+ * @param {GenerateOptions} options the same options passed to generateImages
+ */
+export async function checkImages({
+  sourceDir,
+  outputDir,
+  images,
+  manifestPath,
+  publicPath,
+  defaultWidths = [480, 960],
+  defaultFormats = ["avif", "jpg"],
+}) {
+  if (!manifestPath) {
+    throw new Error("checkImages requires manifestPath");
+  }
+
+  const sourceFiles = (await readdir(sourceDir)).filter((file) =>
+    imagePattern.test(file),
+  );
+
+  checkDrift(sourceDir, images, sourceFiles);
+
+  const basePath = publicPath ?? defaultPublicPath(outputDir);
+  const manifest = await readFile(manifestPath, "utf8").then(
+    JSON.parse,
+    () => null,
+  );
+  const problems = [];
+
+  if (!manifest || manifest.basePath !== basePath) {
+    problems.push(`${manifestPath} is missing or built for another basePath`);
+  } else {
+    const outputFiles = new Set(await readdir(outputDir).catch(() => []));
+
+    for (const [name, entry] of Object.entries(images)) {
+      const generated = manifest.images[name];
+      const fingerprint = await entryFingerprint(
+        path.join(sourceDir, entry.source),
+        entry,
+        {
+          widths: entry.widths ?? defaultWidths,
+          formats: entry.formats ?? defaultFormats,
+          basePath,
+        },
+      );
+
+      if (!generated) {
+        problems.push(`"${name}" has no generated entry`);
+      } else if (generated.fingerprint !== fingerprint) {
+        problems.push(`"${name}" is stale (source or config changed)`);
+      } else {
+        for (const width of generated.widths) {
+          for (const format of generated.formats) {
+            const outputName = `${name}-${width}.${format}`;
+
+            if (!outputFiles.has(outputName)) {
+              problems.push(`missing output file: ${outputName}`);
+            }
+          }
+        }
+      }
+    }
+
+    for (const name of Object.keys(manifest.images)) {
+      if (!images[name]) {
+        problems.push(`"${name}" was removed but is still in ${manifestPath}`);
+      }
+    }
+  }
+
+  if (problems.length > 0) {
+    throw new Error(
+      `Generated images out of date (run npm run images):\n  ${problems.join("\n  ")}`,
+    );
+  }
+
+  console.log(`${manifestPath}: images up to date`);
 }
