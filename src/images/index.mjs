@@ -125,10 +125,12 @@ function cropRegion(source, crop) {
 
 /**
  * URL prefix for a served output directory: "public/images" -> "/images".
+ * Derive it from the config-relative directory, never a resolved absolute
+ * path (see the Vite plugin), or the stripped prefix misses.
  *
  * @param {string} outputDir
  */
-function defaultPublicPath(outputDir) {
+export function defaultPublicPath(outputDir) {
   const normalized = path.normalize(outputDir).split(path.sep).join("/");
 
   return "/" + normalized.replace(/^public\//, "").replace(/^\/+/, "");

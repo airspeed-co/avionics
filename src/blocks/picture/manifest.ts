@@ -1,11 +1,14 @@
 /*
  * The generated image manifest the <Picture> block renders from: the JSON the
- * image engine writes at `manifestPath` (see ../../images). The site imports
- * that JSON and registers it once at entry-module scope, so both prerendering
- * and the hydrated client see it before any Picture renders. Module state
- * rather than context because the manifest is build-time data with exactly one
- * value per site, not something that varies by tree position.
+ * image engine writes at `manifestPath` (see ../../images). Under the
+ * avionics Vite plugin it arrives through ./manifest-data.mjs, whose import
+ * the plugin redirects to the generated JSON, so both prerendering and the
+ * hydrated client see it with no site wiring. Module state rather than
+ * context because the manifest is build-time data with exactly one value per
+ * site, not something that varies by tree position.
  */
+
+import manifestData from "./manifest-data.mjs";
 
 /** One entry of the generated manifest; matches what the engine writes. */
 export interface ImageManifestEntry {
@@ -26,20 +29,26 @@ export interface ImageManifest {
   images: Record<string, ImageManifestEntry>;
 }
 
-let manifest: ImageManifest | undefined;
+let provided: ImageManifest | undefined;
 
-/** Registers the generated manifest. Call once from the site's entry module. */
+/**
+ * Registers a manifest manually, overriding the one the avionics Vite plugin
+ * supplies (see ./manifest-data.mjs). Only needed by consumers not building
+ * with the plugin.
+ */
 export function provideImageManifest(value: ImageManifest) {
-  manifest = value;
+  provided = value;
 }
 
 /** The manifest entry and base path for a name, throwing a pointed error when
  *  the manifest is absent or the name unknown (surfaces at prerender time, so
  *  a bad name fails the build instead of shipping a broken image). */
 export function imageEntry(name: string) {
+  const manifest = provided ?? manifestData;
+
   if (!manifest) {
     throw new Error(
-      "No image manifest registered; import the generated manifest JSON and call provideImageManifest in the site entry",
+      "No image manifest available; add the avionics Vite plugin (an images section in avionics.config.mjs) or call provideImageManifest",
     );
   }
 

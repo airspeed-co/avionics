@@ -67,3 +67,10 @@ export function generateImages(options: GenerateOptions): Promise<void>;
  * every build.
  */
 export function checkImages(options: GenerateOptions): Promise<void>;
+
+/**
+ * URL prefix for a served output directory: "public/images" -> "/images".
+ * Derive it from the config-relative directory, never a resolved absolute
+ * path.
+ */
+export function defaultPublicPath(outputDir: string): string;
