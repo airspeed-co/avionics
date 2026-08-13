@@ -25,7 +25,9 @@
     "./airframe": "./src/airframe/index.ts",
     "./images": "./src/images/index.mjs",
     "./config": "./src/config/index.mjs",
-    "./vite": "./src/vite/index.mjs"
+    "./vite": "./src/vite/index.mjs",
+    "./tsconfig.site.json": "./tsconfig.site.json",
+    "./tsconfig.scripts.json": "./tsconfig.scripts.json"
   },
   "scripts": {
     "check": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.worker.json",
@@ -53,5 +55,10 @@
     "sharp": "^0.35.3",
     "typescript": "^6.0.3",
     "vite": "8.1.5"
+  },
+  "dependencies": {
+    "@preact/preset-vite": "^2.10.6",
+    "browserslist": "^4.28.8",
+    "lightningcss": "^1.33.0"
   }
 }

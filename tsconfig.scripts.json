@@ -1,0 +1,21 @@
+{
+  // Base compiler options for a site's Node tooling: build scripts and
+  // avionics.config.mjs, which the main site config deliberately leaves out.
+  // Editors type-check loose files on their own, so without a project their
+  // errors never appear in `npm run check` or CI; checkJs turns the JSDoc
+  // annotations in .mjs files into real checking, and node types replace the
+  // browser lib the site build uses. Sites extend this and add includes:
+  //   { "extends": "@airspeed-co/avionics/tsconfig.scripts.json", ... }
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022"],
+    "strict": true,
+    "noEmit": true,
+    "allowJs": true,
+    "checkJs": true,
+    "skipLibCheck": true,
+    "types": ["node"]
+  }
+}

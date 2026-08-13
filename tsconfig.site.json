@@ -1,0 +1,21 @@
+{
+  // Base compiler options for avionics site code (browser + worker bundles
+  // built by Vite). Sites extend this and keep only their include/exclude
+  // lists and any real deviations:
+  //   { "extends": "@airspeed-co/avionics/tsconfig.site.json", ... }
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "resolveJsonModule": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact",
+    "types": ["vite/client"]
+  }
+}

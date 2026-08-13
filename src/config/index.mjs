@@ -28,8 +28,23 @@
  */
 
 /**
+ * @typedef {object} PrerenderConfig
+ * @property {string[]} [routes] routes not reachable by links, prerendered in
+ *   addition to everything discovered from the home page
+ * @property {string} [renderTarget] selector the app hydrates into,
+ *   defaulting to "#app"
+ */
+
+/**
  * @typedef {object} AvionicsConfig
  * @property {ImagesConfig} [images] the image pipeline (see ../images)
+ * @property {PrerenderConfig} [prerender] prerendering, wired through the
+ *   preact preset by the Vite plugin (see ../vite)
+ * @property {string} [breakpoints] stylesheet of shared @custom-media
+ *   definitions, prepended to every CSS module so Lightning CSS can resolve
+ *   named breakpoints per file
+ * @property {string} [browsers] browserslist query for CSS targets,
+ *   defaulting to "defaults, safari >= 15, ios_saf >= 15"
  */
 
 /**

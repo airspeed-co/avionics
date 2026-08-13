@@ -3,18 +3,30 @@
  * ../images/index.d.mts for why the implementation stays .mjs).
  */
 
-import type { Plugin } from "vite";
+import type { PluginOption } from "vite";
 
 export interface AvionicsPluginOptions {
-  /** Config path relative to the Vite root. Default "avionics.config.mjs". */
+  /**
+   * Config path relative to the working directory.
+   * Default "avionics.config.mjs".
+   */
   configFile?: string;
+  /**
+   * Replaces %HOME_TITLE% in index.html. Passed here rather than configured
+   * in avionics.config.mjs because the title lives in the site's TypeScript
+   * content layer, which vite.config.ts can import and plain Node cannot.
+   */
+  homeTitle?: string;
 }
 
 /**
- * The avionics Vite plugin. Reads `avionics.config.mjs` from the site root
- * and, when it has an `images` section, owns image generation end to end:
- * generates at dev/build start (fingerprint-skipped when clean), serves the
- * generated manifest to the <Picture> block, and regenerates on config or
- * source changes in dev.
+ * The avionics Vite preset. Reads `avionics.config.mjs` and returns the
+ * shared plugin set: base config (preact dedupe, avionics served as source,
+ * Lightning CSS with the site's browser targets), the image pipeline,
+ * breakpoint injection, index.html stamping (home title, noindex outside
+ * production), and the preact preset with prerendering. Async because Vite
+ * awaits promises in the plugins array.
  */
-export function avionics(options?: AvionicsPluginOptions): Plugin;
+export function avionics(
+  options?: AvionicsPluginOptions,
+): Promise<PluginOption[]>;

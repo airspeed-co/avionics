@@ -1,30 +1,54 @@
 /*
- * The avionics Vite plugin: loads the site's `avionics.config.mjs` and drives
- * the parts of the framework that act at build time. For images it runs the
- * engine (see ../images) at dev-server and build start, skipping work via the
- * engine's fingerprint check when nothing changed, and swaps the content of
- * ../blocks/picture/manifest-data.mjs at load time for the generated manifest
- * JSON, which lives in node_modules/.avionics/ so no generated file sits in
- * the site tree. (A load-hook swap, not a resolveId redirect: rolldown
- * resolves relative imports natively without consulting JS resolveId hooks,
- * but load hooks always run.) In dev it watches the config and the source
- * images and regenerates on change with a full reload.
+ * The avionics Vite preset: loads the site's `avionics.config.mjs` and turns
+ * it into the full build setup, so a site's vite.config.ts holds only truly
+ * site-specific plugins. The returned array carries:
+ *
+ * - the core plugin: base Vite config every avionics site shares (preact
+ *   dedupe, serving avionics as source, Lightning CSS with the site's browser
+ *   targets) plus the image pipeline (see ../images), generated at dev-server
+ *   and build start with fingerprint skipping, swapping the content of
+ *   ../blocks/picture/manifest-data.mjs at load time for the generated
+ *   manifest JSON kept in node_modules/.avionics/. (A load-hook swap, not a
+ *   resolveId redirect: rolldown resolves relative imports natively without
+ *   consulting JS resolveId hooks, but load hooks always run.) In dev it
+ *   watches the config and the source images and regenerates on change;
+ *   non-image config changes (breakpoints, browsers, prerender) need a dev
+ *   server restart.
+ * - a breakpoints plugin (when `breakpoints` is configured): Lightning CSS
+ *   resolves @custom-media per stylesheet, so the shared definitions are
+ *   prepended to every CSS module before transform.
+ * - an index.html plugin: stamps %HOME_TITLE% from the `homeTitle` option
+ *   (passed in vite.config.ts, where importing the site's content layer is
+ *   possible), and injects a robots noindex tag for every mode except
+ *   `production`, so staging and dev builds never reach search results.
+ * - the preact preset with prerendering enabled, routes from `prerender`.
+ *
+ * The factory is async (Vite awaits promises in the plugins array) because
+ * the preact preset needs the config's prerender routes at construction. The
+ * config file is read from the process working directory; image and
+ * breakpoint paths resolve against the Vite root as usual.
  *
  * Plain .mjs with JSDoc types for the same reason as ../images: Vite loads
  * the site config (and therefore this module) under plain Node, where type
  * stripping inside node_modules is disallowed.
  */
 
-import { realpathSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+
+import preact from "@preact/preset-vite";
+import browserslist from "browserslist";
+import { browserslistToTargets } from "lightningcss";
 
 import {
   checkImages,
   defaultPublicPath,
   generateImages,
 } from "../images/index.mjs";
+
+const defaultBrowsers = "defaults, safari >= 15, ios_saf >= 15";
 
 const stubPath = realpathSync(
   fileURLToPath(
@@ -48,22 +72,44 @@ function idToFile(id) {
 
 /**
  * @typedef {object} AvionicsPluginOptions
- * @property {string} [configFile] config path relative to the Vite root,
- *   defaulting to "avionics.config.mjs"
+ * @property {string} [configFile] config path relative to the working
+ *   directory, defaulting to "avionics.config.mjs"
+ * @property {string} [homeTitle] replaces %HOME_TITLE% in index.html; passed
+ *   here rather than configured in avionics.config.mjs because the title
+ *   lives in the site's TypeScript content layer, which vite.config.ts can
+ *   import and plain Node cannot
  */
 
 /**
- * The avionics Vite plugin. Reads `avionics.config.mjs` from the site root
- * and, when it has an `images` section, owns image generation end to end.
+ * The avionics Vite preset. Reads `avionics.config.mjs` and returns the
+ * shared plugin set; see the module comment for what it covers.
  *
  * @param {AvionicsPluginOptions} [options]
- * @returns {import("vite").Plugin}
+ * @returns {Promise<import("vite").PluginOption[]>}
  */
-export function avionics({ configFile = "avionics.config.mjs" } = {}) {
+export async function avionics({
+  configFile = "avionics.config.mjs",
+  homeTitle,
+} = {}) {
+  const configPath = path.resolve(process.cwd(), configFile);
+
+  /** Re-imported with a cache-busting query because Node caches ESM imports
+   *  forever and dev regenerates on config edits. */
+  async function importConfig() {
+    const url = `${pathToFileURL(configPath).href}?t=${Date.now()}`;
+
+    return (await import(url)).default ?? {};
+  }
+
+  const config = await importConfig();
+  const targets = browserslistToTargets(
+    browserslist(config.browsers ?? defaultBrowsers),
+  );
+
   /** @type {string} */
   let root;
   /** @type {string} */
-  let configPath;
+  let mode;
   /** @type {string} */
   let manifestPath;
   /** @type {import("../images/index.mjs").GenerateOptions | undefined} */
@@ -71,12 +117,9 @@ export function avionics({ configFile = "avionics.config.mjs" } = {}) {
   /** @type {Promise<void> | undefined} */
   let imagesReady;
 
-  async function loadConfig() {
-    // Cache-busting query because Node caches ESM imports forever and dev
-    // regenerates on config edits.
-    const url = `${pathToFileURL(configPath).href}?t=${Date.now()}`;
-    const config = (await import(url)).default;
-    const images = config?.images;
+  /** @param {typeof config} loaded */
+  function resolveImageOptions(loaded) {
+    const images = loaded?.images;
     const outputDir = images?.outputDir ?? "public/images";
 
     imageOptions = images && {
@@ -104,15 +147,41 @@ export function avionics({ configFile = "avionics.config.mjs" } = {}) {
     }
   }
 
-  return {
+  /** @type {import("vite").Plugin} */
+  const core = {
     name: "avionics",
 
-    async configResolved(resolved) {
+    config: () => ({
+      // One preact only: when the package is npm-linked, its own node_modules
+      // holds a second copy, and duplicate preact breaks hooks.
+      resolve: {
+        dedupe: ["preact"],
+      },
+      // Avionics ships raw TS source, so serve it as source instead of
+      // pre-bundling: dev picks up package changes without a server restart,
+      // and edits hot-reload while the package is linked locally.
+      optimizeDeps: {
+        exclude: ["@airspeed-co/avionics"],
+      },
+      css: {
+        transformer: "lightningcss",
+        lightningcss: {
+          targets,
+          drafts: { customMedia: true },
+        },
+      },
+      build: {
+        cssMinify: "lightningcss",
+        cssTarget: "safari15",
+      },
+    }),
+
+    configResolved(resolved) {
       root = resolved.root;
-      configPath = path.resolve(root, configFile);
+      mode = resolved.mode;
       manifestPath = path.resolve(root, "node_modules/.avionics/images.json");
 
-      await loadConfig();
+      resolveImageOptions(config);
     },
 
     // Fires once per Vite environment (client, worker, prerender); the shared
@@ -147,7 +216,7 @@ export function avionics({ configFile = "avionics.config.mjs" } = {}) {
 
         if (!fromConfig && !fromSource) return;
 
-        if (fromConfig) await loadConfig();
+        if (fromConfig) resolveImageOptions(await importConfig());
         imagesReady = ensureImages();
         await imagesReady;
 
@@ -167,4 +236,59 @@ export function avionics({ configFile = "avionics.config.mjs" } = {}) {
       server.watcher.on("unlink", regenerate);
     },
   };
+
+  /** @type {import("vite").PluginOption[]} */
+  const plugins = [core];
+
+  if (config.breakpoints) {
+    /** @type {string} */
+    let breakpointsPath;
+
+    plugins.push({
+      name: "avionics:breakpoints",
+      enforce: "pre",
+      configResolved(resolved) {
+        breakpointsPath = path.resolve(resolved.root, config.breakpoints);
+      },
+      transform(code, id) {
+        const file = id.split("?")[0];
+
+        if (!file.endsWith(".css") || file === breakpointsPath) return;
+
+        return readFileSync(breakpointsPath, "utf8") + code;
+      },
+    });
+  }
+
+  plugins.push({
+    name: "avionics:index-html",
+    transformIndexHtml: {
+      order: "pre",
+      handler: (html) => ({
+        html: homeTitle ? html.replace("%HOME_TITLE%", homeTitle) : html,
+        tags:
+          mode === "production"
+            ? []
+            : [
+                {
+                  tag: "meta",
+                  attrs: { name: "robots", content: "noindex" },
+                  injectTo: "head",
+                },
+              ],
+      }),
+    },
+  });
+
+  plugins.push(
+    preact({
+      prerender: {
+        enabled: true,
+        renderTarget: config.prerender?.renderTarget ?? "#app",
+        additionalPrerenderRoutes: config.prerender?.routes ?? [],
+      },
+    }),
+  );
+
+  return plugins;
 }

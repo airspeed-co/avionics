@@ -23,9 +23,31 @@ export interface ImagesConfig {
   defaultFormats?: Format[];
 }
 
+export interface PrerenderConfig {
+  /**
+   * Routes not reachable by links, prerendered in addition to everything
+   * discovered from the home page.
+   */
+  routes?: string[];
+  /** Selector the app hydrates into. Default "#app". */
+  renderTarget?: string;
+}
+
 export interface AvionicsConfig {
   /** The image pipeline (see the images module). */
   images?: ImagesConfig;
+  /** Prerendering, wired through the preact preset by the Vite plugin. */
+  prerender?: PrerenderConfig;
+  /**
+   * Stylesheet of shared @custom-media definitions, prepended to every CSS
+   * module so Lightning CSS can resolve named breakpoints per file.
+   */
+  breakpoints?: string;
+  /**
+   * Browserslist query for CSS targets.
+   * Default "defaults, safari >= 15, ios_saf >= 15".
+   */
+  browsers?: string;
 }
 
 /**
