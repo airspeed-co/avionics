@@ -1,0 +1,26 @@
+{
+  // Base compiler options for a site's Cloudflare Worker code. No DOM lib:
+  // the runtime globals come from the site's wrangler-generated
+  // worker-configuration.d.ts, whose workerd types (WebSocket among them)
+  // conflict with lib.dom's when both are in one project. Exported as
+  // ./tsconfig.worker.json (this file name only avoids clashing with
+  // avionics' own internal tsconfig.worker.json). Sites extend it and
+  // include their worker directory plus the generated types:
+  //   { "extends": "@airspeed-co/avionics/tsconfig.worker.json",
+  //     "include": ["src/worker", "worker-configuration.d.ts"] }
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022"],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "resolveJsonModule": true,
+    // vite/client types import.meta.env, which worker code built by Vite may
+    // read; it does not pull in the DOM lib.
+    "types": ["vite/client"]
+  }
+}

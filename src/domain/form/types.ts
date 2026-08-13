@@ -23,7 +23,12 @@ export interface FieldConfig<Key extends string = string> {
   /** Hint text shown inside the empty control. */
   placeholder?: string;
   validations: Validation[];
-  autocomplete?: AutoFill;
+  /**
+   * Autocomplete attribute tokens, e.g. "email" or "tel". Typed as string
+   * (not lib.dom's AutoFill union) because domain types are shared with
+   * worker code compiled without the DOM lib.
+   */
+  autocomplete?: string;
 }
 
 export interface ValidationError<Key extends string = string> {
