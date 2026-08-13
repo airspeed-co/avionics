@@ -15,14 +15,21 @@
  */
 
 /**
+ * @typedef {ImageEntry & { name: string }} NamedImageEntry an image entry
+ *   plus its output base name (the <Picture> key). A list rather than an
+ *   object keyed by name, so hyphenated names read like every other one
+ *   instead of needing quotes.
+ */
+
+/**
  * @typedef {object} ImagesConfig
  * @property {string} sourceDir directory of original images
  * @property {string} [outputDir] generated-variant directory the engine owns;
  *   defaults to "public/images"
  * @property {string} [publicPath] URL prefix the output directory is served
  *   under; defaults to `outputDir` with a leading "public/" stripped
- * @property {Record<string, ImageEntry>} entries manifest keyed by output
- *   base name
+ * @property {NamedImageEntry[]} entries the images to generate; names must be
+ *   unique
  * @property {number[]} [defaultWidths] widths for entries without their own
  * @property {Format[]} [defaultFormats] formats for entries without their own
  */

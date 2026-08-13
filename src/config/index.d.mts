@@ -5,6 +5,13 @@
 
 import type { Format, ImageEntry } from "../images/index.mjs";
 
+/**
+ * An image entry plus its output base name (the <Picture> key). A list rather
+ * than an object keyed by name, so hyphenated names read like every other one
+ * instead of needing quotes.
+ */
+export type NamedImageEntry = ImageEntry & { name: string };
+
 export interface ImagesConfig {
   /** Directory of original images. */
   sourceDir: string;
@@ -15,8 +22,8 @@ export interface ImagesConfig {
    * with a leading "public/" stripped, e.g. "public/images" -> "/images".
    */
   publicPath?: string;
-  /** Manifest keyed by output base name. */
-  entries: Record<string, ImageEntry>;
+  /** The images to generate; names must be unique. */
+  entries: NamedImageEntry[];
   /** Widths for entries without their own. Default [480, 960]. */
   defaultWidths?: number[];
   /** Formats for entries without their own. Default ["avif", "jpg"]. */

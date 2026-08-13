@@ -71,6 +71,28 @@ function idToFile(id) {
 }
 
 /**
+ * The config's entry list as the record the image engine consumes. The list
+ * form can express duplicate names, so reject them here.
+ *
+ * @param {import("../config/index.mjs").NamedImageEntry[]} entries
+ * @returns {Record<string, import("../images/index.mjs").ImageEntry>}
+ */
+function recordFromEntries(entries) {
+  /** @type {Record<string, import("../images/index.mjs").ImageEntry>} */
+  const record = {};
+
+  for (const { name, ...entry } of entries) {
+    if (record[name]) {
+      throw new Error(`Duplicate image entry name "${name}"`);
+    }
+
+    record[name] = entry;
+  }
+
+  return record;
+}
+
+/**
  * @typedef {object} AvionicsPluginOptions
  * @property {string} [configFile] config path relative to the working
  *   directory, defaulting to "avionics.config.mjs"
@@ -127,7 +149,7 @@ export async function avionics({
       // Resolved for the engine, but the served URL prefix must come from the
       // config-relative directory, so derive it before resolving.
       outputDir: path.resolve(root, outputDir),
-      images: images.entries,
+      images: recordFromEntries(images.entries),
       manifestPath,
       publicPath: images.publicPath ?? defaultPublicPath(outputDir),
       ...(images.defaultWidths && { defaultWidths: images.defaultWidths }),
