@@ -10,6 +10,7 @@
         "prerendering",
         "prerenders",
         "rasterizes",
-        "renderable"
+        "renderable",
+        "workerd"
     ]
 }
