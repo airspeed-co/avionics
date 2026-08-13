@@ -10,6 +10,9 @@
   },
   "files": [
     "src",
+    "tsconfig.site.json",
+    "tsconfig.scripts.json",
+    "tsconfig.site-worker.json",
     "README.md",
     "LICENSE"
   ],
