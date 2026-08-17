@@ -1,7 +1,12 @@
 import type { ContactFormKey } from "../domain/contact-form";
 import type { FieldConfig } from "../domain/form";
-import { validateForm } from "../domain/form";
+import {
+  TURNSTILE_TOKEN_FIELD,
+  validateForm,
+  VERIFICATION_FAILED_CODE,
+} from "../domain/form";
 import { sendEmail } from "./send-email";
+import { verifyTurnstile } from "./turnstile";
 import type { ApiErrorResponse, ApiSuccessResponse, ContactEnv } from "./types";
 
 interface ContactPayload {
@@ -9,7 +14,7 @@ interface ContactPayload {
   email?: string;
   phone?: string;
   message?: string;
-  company?: string; // honeypot
+  [TURNSTILE_TOKEN_FIELD]?: string;
 }
 
 function json(body: ApiSuccessResponse | ApiErrorResponse, status: number) {
@@ -37,9 +42,31 @@ export function createContactHandler(fields: FieldConfig<ContactFormKey>[]) {
       return json({ error: "Invalid request body." }, 400);
     }
 
-    // Honeypot filled in: pretend success, send nothing.
-    if (payload.company) {
-      return json({ ok: true }, 200);
+    // Bot check first, before any of the payload is trusted. Fails closed
+    // with an error the visitor sees; nothing is ever silently dropped, so a
+    // human never reads "sent" over a message that went nowhere.
+    if (env.TURNSTILE_SECRET_KEY) {
+      const verdict = await verifyTurnstile(
+        env.TURNSTILE_SECRET_KEY,
+        payload[TURNSTILE_TOKEN_FIELD],
+        request.headers.get("CF-Connecting-IP"),
+      );
+
+      if (!verdict.verified) {
+        console.warn("Contact form verification failed:", verdict.reason);
+
+        return json(
+          {
+            error: "We could not verify this submission. Please try again.",
+            code: VERIFICATION_FAILED_CODE,
+          },
+          400,
+        );
+      }
+    } else {
+      console.warn(
+        "TURNSTILE_SECRET_KEY unset; contact form accepted without verification.",
+      );
     }
 
     const error = validateForm(fields, payload);

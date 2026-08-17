@@ -22,7 +22,7 @@ One level deep, one entry per runtime concern. `blocks` and `hooks` are browser-
 | `@airspeed-co/avionics/domain` | `FieldConfig`, `Validation`, `validateForm`, `buildContactFormFields`, contact form types |
 | `@airspeed-co/avionics/hooks` | `useTitle`, `useDescription`, `useJsonLd`, `useNoindex`, `useAlternateLanguage`, prerender capture helpers |
 | `@airspeed-co/avionics/utils` | `classNames`, validation factories (required, email, length, words) |
-| `@airspeed-co/avionics/worker` | `createContactHandler`, `sendEmail`, `rewriteOpenGraph`, `ContactEnv` |
+| `@airspeed-co/avionics/worker` | `createContactHandler`, `sendEmail`, `verifyTurnstile`, `rewriteOpenGraph`, `ContactEnv` |
 | `@airspeed-co/avionics/airframe` | `createSiteEntry`, `definePages`, `enableClientNavigation` |
 
 ## Airframe
@@ -47,10 +47,10 @@ export const { prerender } = createSiteEntry({
 
 ## What the site owns
 
-**Visual CSS.** Blocks render stable class names and ship only functional CSS (the form honeypot hiding, the picture layout). The site styles these hooks in its own stylesheets:
+**Visual CSS.** Blocks render stable class names and ship only functional CSS (the picture layout). The site styles these hooks in its own stylesheets:
 
 - `Button`: `.button`, `.button-primary`, `.button-inverted`
-- `Form`: `.form`, `.form-submit`, `.form-error`, `.form-success` (the `.form-honeypot` hiding ships with the block)
+- `Form`: `.form`, `.form-submit`, `.form-error`, `.form-success`, `.form-turnstile` (empty unless the bot check needs a click; give it a margin)
 - `FormField`: `.field`, `.field-error`, `.field-error-message`
 
 **Titles.** `useTitle` takes the finished document title; keep a `formatTitle` helper in the site's config. `resetServerHead(defaultTitle)` takes the default for the same reason.
@@ -65,7 +65,9 @@ export const contactFormFields = buildContactFormFields(en.contactForm);
 const handleContact = createContactHandler(contactFormFields);
 ```
 
-**Env bindings.** The Worker handler needs `CONTACT_FROM`, `CONTACT_TO`, optional `CONTACT_FROM_NAME` (wrangler `vars`) and the `RESEND_API_KEY` secret; without the key (local dev) it logs the email instead of sending. A site's wrangler-generated `Env` satisfies `ContactEnv` structurally.
+**Env bindings.** The Worker handler needs `CONTACT_FROM`, `CONTACT_TO`, optional `CONTACT_FROM_NAME` (wrangler `vars`) and the `RESEND_API_KEY` and `TURNSTILE_SECRET_KEY` secrets; without the Resend key (local dev) it logs the email instead of sending, and without the Turnstile secret it accepts submissions unverified and says so in the worker log. A site's wrangler-generated `Env` satisfies `ContactEnv` structurally.
+
+**Bot protection.** The form uses [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/), not a honeypot: honeypots get filled by browser autofill and then have to fake success to keep bots guessing, which silently drops real people. Pass the widget's public site key as `turnstileSiteKey` on `Form`; the block loads the script on demand, runs an invisible challenge at submit, and sends the token; the handler verifies it with `TURNSTILE_SECRET_KEY` before doing anything else. Nothing is ever silently dropped: a missing or rejected token, or a challenge that could not run, shows the site's `verificationFailed` copy (from `ContactFormCopy`, so it can name the phone number or email to use instead) and the visitor can retry. One widget can list every hostname a site runs on (apex, preview subdomain, `*.workers.dev`, `localhost`); for dev and CI without a widget, `TURNSTILE_TEST_SITE_KEY` and `TURNSTILE_TEST_SECRET_KEY` are Cloudflare's always-pass pair.
 
 ## Versioning
 

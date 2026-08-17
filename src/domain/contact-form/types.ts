@@ -24,6 +24,12 @@ export interface ContactFormCopy {
   sending: string;
   success: string;
   errorFallback: string;
+  /**
+   * Shown when the Turnstile bot check cannot run or rejects the submission.
+   * Ask the visitor to try again and point at another way to get in touch;
+   * the message was not sent.
+   */
+  verificationFailed: string;
   validation: {
     required: string;
     email: string;

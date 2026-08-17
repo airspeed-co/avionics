@@ -1,9 +1,10 @@
+import { useRef } from "preact/hooks";
+
 import type { FieldConfig } from "../../domain/form";
 import { Button } from "../button/button";
 import { FormField } from "../form-field/form-field";
+import { useTurnstile } from "./turnstile";
 import { useForm } from "./use-form";
-
-import "./form.css";
 
 interface FormProperties<Key extends string> {
   fields: FieldConfig<Key>[];
@@ -14,6 +15,18 @@ interface FormProperties<Key extends string> {
   successMessage?: string;
   /** Shown when the server rejects the submission without its own message. */
   errorFallback?: string;
+  /**
+   * Cloudflare Turnstile site key (public). When set, submitting runs an
+   * invisible challenge and sends the token for the Worker to verify; the
+   * widget only becomes visible (inside `.form-turnstile`) if Turnstile needs
+   * the visitor to interact. Omit to submit without a token.
+   */
+  turnstileSiteKey?: string;
+  /**
+   * Shown when the challenge cannot run or the token is rejected. Should tell
+   * the visitor to try again and name another way to get in touch.
+   */
+  verificationFailedMessage?: string;
 }
 
 /**
@@ -29,6 +42,8 @@ interface FormProperties<Key extends string> {
 const keepFocusOnPress = (event: Event) => event.preventDefault();
 
 export function Form<Key extends string>(props: FormProperties<Key>) {
+  const turnstileContainer = useRef<HTMLDivElement>(null);
+  const getToken = useTurnstile(props.turnstileSiteKey, turnstileContainer);
   const {
     form,
     touched,
@@ -41,6 +56,8 @@ export function Form<Key extends string>(props: FormProperties<Key>) {
     fields: props.fields,
     endpoint: props.endpoint,
     errorFallback: props.errorFallback,
+    getToken,
+    verificationFailedMessage: props.verificationFailedMessage,
   });
 
   if (status === "sent") {
@@ -88,11 +105,10 @@ export function Form<Key extends string>(props: FormProperties<Key>) {
         </FormField>
       ))}
 
-      {/* Honeypot: hidden from humans, bots fill it in. */}
-      <label class="form-honeypot" aria-hidden="true">
-        Company
-        <input type="text" name="company" tabIndex={-1} autoComplete="off" />
-      </label>
+      {/* Turnstile renders here; empty unless the challenge needs a click. */}
+      {props.turnstileSiteKey && (
+        <div class="form-turnstile" ref={turnstileContainer} />
+      )}
 
       <Button
         type="submit"

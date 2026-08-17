@@ -10,7 +10,10 @@
         "prerendering",
         "prerenders",
         "rasterizes",
+        "remoteip",
         "renderable",
+        "sitekey",
+        "siteverify",
         "workerd"
     ]
 }

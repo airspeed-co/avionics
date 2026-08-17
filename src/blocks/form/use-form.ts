@@ -1,7 +1,11 @@
 import { useState } from "preact/hooks";
 
 import type { FieldConfig, FormStatus } from "../../domain/form";
-import { validateForm } from "../../domain/form";
+import {
+  TURNSTILE_TOKEN_FIELD,
+  validateForm,
+  VERIFICATION_FAILED_CODE,
+} from "../../domain/form";
 
 export interface UseFormOptions<Key extends string> {
   fields: FieldConfig<Key>[];
@@ -9,12 +13,25 @@ export interface UseFormOptions<Key extends string> {
   endpoint: string;
   /** Shown when the server rejects the submission without its own message. */
   errorFallback?: string;
+  /**
+   * Runs the Turnstile challenge and resolves with a token to send along
+   * (see useTurnstile). Undefined when the form has no site key.
+   */
+  getToken?: () => Promise<string>;
+  /**
+   * Shown when the challenge cannot run or the server rejects the token, so
+   * the visitor knows to retry (or use another contact route) instead of
+   * seeing a generic failure.
+   */
+  verificationFailedMessage?: string;
 }
 
 export function useForm<Key extends string>({
   fields,
   endpoint,
   errorFallback = "Something went wrong.",
+  getToken,
+  verificationFailedMessage = errorFallback,
 }: UseFormOptions<Key>) {
   const emptyForm = Object.fromEntries(
     fields.map((field) => [field.name, ""]),
@@ -56,11 +73,6 @@ export function useForm<Key extends string>({
   async function handleSubmit(event: SubmitEvent) {
     event.preventDefault();
 
-    const formElement = event.currentTarget as HTMLFormElement;
-    const honeypot = formElement.elements.namedItem(
-      "company",
-    ) as HTMLInputElement | null;
-
     if (validateForm(fields, form)) {
       setTouched(
         Object.fromEntries(fields.map((field) => [field.name, true])) as Record<
@@ -75,19 +87,43 @@ export function useForm<Key extends string>({
     setStatus("sending");
     setServerError("");
 
+    let token: string | undefined;
+
+    if (getToken) {
+      try {
+        token = await getToken();
+      } catch {
+        // The challenge could not run (script blocked, network, timeout).
+        // Never send unverified and never pretend: tell the visitor.
+        setStatus("error");
+        setServerError(verificationFailedMessage);
+
+        return;
+      }
+    }
+
     try {
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, company: honeypot?.value ?? "" }),
+        body: JSON.stringify(
+          token ? { ...form, [TURNSTILE_TOKEN_FIELD]: token } : form,
+        ),
       });
 
       if (!res.ok) {
         const body = (await res.json().catch(() => null)) as {
           error?: string;
+          code?: string;
         } | null;
 
-        throw new Error(body?.error ?? errorFallback);
+        // The server answers in English; a verification failure is the one
+        // error a real visitor can hit, so it gets the site's own copy.
+        throw new Error(
+          body?.code === VERIFICATION_FAILED_CODE
+            ? verificationFailedMessage
+            : (body?.error ?? errorFallback),
+        );
       }
 
       setStatus("sent");
