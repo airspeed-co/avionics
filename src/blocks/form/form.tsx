@@ -46,7 +46,7 @@ export function Form<Key extends string>(props: FormProperties<Key>) {
   const getToken = useTurnstile(props.turnstileSiteKey, turnstileContainer);
   const {
     form,
-    touched,
+    showError,
     status,
     serverError,
     setField,
@@ -76,7 +76,7 @@ export function Form<Key extends string>(props: FormProperties<Key>) {
           for={field.name}
           label={field.label}
           value={form[field.name]}
-          error={touched[field.name]}
+          error={showError(field.name)}
           validations={field.validations}
         >
           {field.control === "textarea" ? (

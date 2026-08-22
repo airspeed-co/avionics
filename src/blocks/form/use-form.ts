@@ -44,6 +44,9 @@ export function useForm<Key extends string>({
   const [touched, setTouched] = useState(untouched);
   const [status, setStatus] = useState<FormStatus>("idle");
   const [serverError, setServerError] = useState("");
+  // Set by the first submit attempt: until then an empty field is never an
+  // error, even one the visitor typed into and cleared again.
+  const [attempted, setAttempted] = useState(false);
 
   function setField(name: Key) {
     return (event: Event) => {
@@ -72,6 +75,8 @@ export function useForm<Key extends string>({
 
   async function handleSubmit(event: SubmitEvent) {
     event.preventDefault();
+
+    setAttempted(true);
 
     if (validateForm(fields, form)) {
       setTouched(
@@ -133,16 +138,27 @@ export function useForm<Key extends string>({
     }
   }
 
+  /**
+   * Whether a field should show its validation message: after it has been
+   * blurred with content (format errors, "reward early, punish late"), and
+   * for an empty field only once a submit has been attempted.
+   */
+  function showError(name: Key) {
+    return touched[name] && (form[name] !== "" || attempted);
+  }
+
   function reset() {
     setForm(emptyForm);
     setTouched(untouched);
     setStatus("idle");
     setServerError("");
+    setAttempted(false);
   }
 
   return {
     form,
     touched,
+    showError,
     status,
     serverError,
     setField,
