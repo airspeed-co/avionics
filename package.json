@@ -35,7 +35,7 @@
   },
   "scripts": {
     "check": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.worker.json",
-    "spellcheck": "cspell \"**/*.{ts,tsx,js,jsx,json,md}\""
+    "spellcheck": "cspell --no-progress ."
   },
   "peerDependencies": {
     "preact": "^10.29.0",

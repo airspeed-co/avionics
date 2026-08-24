@@ -1,10 +1,16 @@
 {
+    "$schema": "https://raw.githubusercontent.com/streetsidesoftware/cspell/main/cspell.schema.json",
+    "version": "0.2",
+    "useGitignore": true,
+    "ignorePaths": ["package-lock.json"],
     "words": [
         "browserslist",
         "exif",
+        "hrefs",
         "lightningcss",
         "miniflare",
         "mozjpeg",
+        "noindexed",
         "prerender",
         "prerendered",
         "prerendering",
@@ -14,6 +20,8 @@
         "renderable",
         "sitekey",
         "siteverify",
+        "slashless",
+        "ullom",
         "workerd"
     ]
 }
