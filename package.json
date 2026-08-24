@@ -25,6 +25,7 @@
     "./hooks": "./src/hooks/index.ts",
     "./utils": "./src/utils/index.ts",
     "./worker": "./src/worker/index.ts",
+    "./preflight": "./src/preflight/index.mjs",
     "./airframe": "./src/airframe/index.ts",
     "./images": "./src/images/index.mjs",
     "./config": "./src/config/index.mjs",
