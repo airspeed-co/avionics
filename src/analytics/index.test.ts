@@ -3,10 +3,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /*
- * The analytics gates decide whether measurement runs at all, and a
- * silently wrong gate either pollutes the data or drops it for weeks
- * before anyone notices. The module keeps "active" state at module scope,
- * so each test re-imports a fresh copy.
+ * The analytics gates decide whether measurement runs at all, and the
+ * debug_mode flag decides whether a hit counts as real traffic; a silently
+ * wrong gate or flag either pollutes the data or drops it for weeks before
+ * anyone notices. The module keeps "active" state at module scope, so each
+ * test re-imports a fresh copy.
  */
 
 const ORIGIN = "https://airspeed.co";
@@ -49,7 +50,7 @@ describe("initAnalytics", () => {
     expect(window.dataLayer).toBeUndefined();
   });
 
-  it("does nothing when the page is not on the canonical origin", async () => {
+  it("flags hits with debug_mode off the canonical origin", async () => {
     const { initAnalytics } = await loadAnalytics();
 
     initAnalytics({
@@ -57,16 +58,26 @@ describe("initAnalytics", () => {
       origin: "https://example.com",
     });
 
-    expect(gtagScript()).toBeNull();
+    expect(gtagScript()?.getAttribute("src")).toContain(MEASUREMENT_ID);
+    expect(pushedEntries()).toContainEqual([
+      "config",
+      MEASUREMENT_ID,
+      { debug_mode: true },
+    ]);
   });
 
-  it("loads gtag and records config on the canonical origin", async () => {
+  it("records config without debug_mode on the canonical origin", async () => {
     const { initAnalytics } = await loadAnalytics();
 
     initAnalytics({ measurementId: MEASUREMENT_ID, origin: ORIGIN });
 
+    // GA4 treats a present debug_mode key as debug even when false, so the
+    // production config call must not carry a params object at all.
     expect(gtagScript()?.getAttribute("src")).toContain(MEASUREMENT_ID);
     expect(pushedEntries()).toContainEqual(["config", MEASUREMENT_ID]);
+    expect(
+      pushedEntries().filter((entry) => entry[0] === "config"),
+    ).toHaveLength(1);
   });
 
   it("?analytics=off opts the browser out, and it persists", async () => {

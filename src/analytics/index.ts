@@ -1,12 +1,18 @@
 /*
- * Google Analytics 4 for avionics sites: the official gtag bootstrap behind
- * a production gate, plus a typed event helper. A site calls initAnalytics
- * once from its entry module; it no-ops during prerendering (no window),
- * without a measurement id, and on any host other than the canonical
- * origin, so dev servers, local production builds, and preview deployments
- * never pollute the property. GA4's enhanced measurement then tracks page
- * views on its own, including the airframe's client-side page swaps (it
- * listens for history changes).
+ * Google Analytics 4 for avionics sites: the official gtag bootstrap plus a
+ * typed event helper. A site calls initAnalytics once from its entry module;
+ * it no-ops during prerendering (no window) and without a measurement id,
+ * but otherwise runs on every host. Hits from anywhere but the canonical
+ * origin (dev servers, local production builds, preview deployments) are
+ * sent with debug_mode, so they stream into GA4's DebugView and Tag
+ * Assistant for pre-deploy testing. GA4's enhanced measurement then tracks
+ * page views on its own, including the airframe's client-side page swaps
+ * (it listens for history changes).
+ *
+ * REQUIRED property setup: the code can only flag non-production hits; the
+ * GA4 property must exclude them from reports with a "Developer traffic"
+ * data filter in the Active state (Admin > Data collection and modification
+ * > Data filters). Without it, every dev page load counts as real traffic.
  *
  * Self-exclusion: visiting any page with ?analytics=off sets a per-browser
  * opt-out (?analytics=on clears it), so the owner's visits don't count as
@@ -26,8 +32,9 @@ export interface AnalyticsOptions {
   /** GA4 measurement id ("G-XXXXXXXXXX"). Omit to disable analytics, e.g.
    *  on a site that has no property yet. */
   measurementId?: string;
-  /** Canonical production origin ("https://airspeed.co"); analytics only
-   *  runs when the page is actually served from it. */
+  /** Canonical production origin ("https://airspeed.co"). Pages served from
+   *  anywhere else send their hits flagged with debug_mode, for the
+   *  property's Developer-traffic filter to exclude from reports. */
   origin: string;
 }
 
@@ -68,7 +75,6 @@ export function initAnalytics({ measurementId, origin }: AnalyticsOptions) {
   if (!measurementId) return;
   if (typeof window === "undefined") return;
   if (optedOut()) return;
-  if (window.location.origin !== origin) return;
 
   const script = document.createElement("script");
 
@@ -85,7 +91,14 @@ export function initAnalytics({ measurementId, origin }: AnalyticsOptions) {
     window.dataLayer?.push(arguments);
   };
   window.gtag("js", new Date());
-  window.gtag("config", measurementId);
+
+  // GA4 treats the mere presence of the debug_mode key as debug (even set
+  // to false), so the parameter must be absent entirely on production.
+  if (window.location.origin === origin) {
+    window.gtag("config", measurementId);
+  } else {
+    window.gtag("config", measurementId, { debug_mode: true });
+  }
 
   active = true;
 }
