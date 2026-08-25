@@ -1,0 +1,40 @@
+# CI for the avionics package: every step is an npm script, mirroring the
+# sites' convention. The sites' shared workflow (airspeed-co/workflows) is
+# site-shaped (Wrangler types, build, previews), so this package carries its
+# own thin steps instead of calling it.
+name: Continuous Integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run check
+
+      - name: Spellcheck
+        run: npm run spellcheck
+
+      - name: Run tests
+        run: npm test
+
+      - name: Format check
+        run: npm run format:check

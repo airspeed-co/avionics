@@ -10,7 +10,7 @@
   },
   "files": [
     "src",
-    "!src/**/*.test.ts",
+    "!src/**/*.test.*",
     "tsconfig.site.json",
     "tsconfig.scripts.json",
     "tsconfig.site-worker.json",
@@ -39,7 +39,9 @@
   "scripts": {
     "check": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.worker.json",
     "spellcheck": "cspell --no-progress .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "peerDependencies": {
     "preact": "^10.29.0",
@@ -57,17 +59,20 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260730.1",
+    "@preact/preset-vite": "^2.10.6",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/preact": "^3.2.4",
     "cspell": "^10.0.1",
     "jsdom": "^29.1.1",
     "preact": "^10.29.7",
     "preact-iso": "^2.12.0",
+    "prettier": "^3.9.6",
     "sharp": "^0.35.3",
     "typescript": "^6.0.3",
     "vite": "8.1.5",
     "vitest": "^4.1.11"
   },
   "dependencies": {
-    "@preact/preset-vite": "^2.10.6",
     "browserslist": "^4.28.8",
     "lightningcss": "^1.33.0"
   }

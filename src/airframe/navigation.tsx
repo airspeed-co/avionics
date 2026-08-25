@@ -92,7 +92,9 @@ export function enableClientNavigation(
         const padding =
           parseFloat(getComputedStyle(scroller).scrollPaddingTop) || 0;
 
-        scrollTo({ top: target.getBoundingClientRect().top + scrollY - padding });
+        scrollTo({
+          top: target.getBoundingClientRect().top + scrollY - padding,
+        });
       };
 
       let scrolled = false;

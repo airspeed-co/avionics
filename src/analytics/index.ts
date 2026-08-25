@@ -52,7 +52,9 @@ function optedOut() {
     const excluded = localStorage.getItem(OPT_OUT_KEY) === "off";
 
     if (excluded) {
-      console.info("Analytics are off in this browser (?analytics=on turns it back on).");
+      console.info(
+        "Analytics are off in this browser (?analytics=on turns it back on).",
+      );
     }
 
     return excluded;

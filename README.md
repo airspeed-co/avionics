@@ -16,14 +16,14 @@ npm install @airspeed-co/avionics preact preact-iso
 
 One level deep, one entry per runtime concern. `blocks` and `hooks` are browser-only (preact, CSS); `domain` and `utils` are pure and safe in both runtimes; `worker` is worker-only. They stay separate so the Worker bundle never pulls preact or CSS, and importing a helper never drags block styles along.
 
-| Import | Contents |
-| :-- | :-- |
-| `@airspeed-co/avionics/blocks` | `Button`, `Form`, `FormField`, `Picture` |
-| `@airspeed-co/avionics/domain` | `FieldConfig`, `Validation`, `validateForm`, `buildContactFormFields`, contact form types |
-| `@airspeed-co/avionics/hooks` | `useTitle`, `useDescription`, `useJsonLd`, `useNoindex`, `useAlternateLanguage`, prerender capture helpers |
-| `@airspeed-co/avionics/utils` | `classNames`, validation factories (required, email, length, words) |
-| `@airspeed-co/avionics/worker` | `createContactHandler`, `sendEmail`, `verifyTurnstile`, `rewriteOpenGraph`, `ContactEnv` |
-| `@airspeed-co/avionics/airframe` | `createSiteEntry`, `definePages`, `enableClientNavigation` |
+| Import                           | Contents                                                                                                   |
+| :------------------------------- | :--------------------------------------------------------------------------------------------------------- |
+| `@airspeed-co/avionics/blocks`   | `Button`, `Form`, `FormField`, `Picture`                                                                   |
+| `@airspeed-co/avionics/domain`   | `FieldConfig`, `Validation`, `validateForm`, `buildContactFormFields`, contact form types                  |
+| `@airspeed-co/avionics/hooks`    | `useTitle`, `useDescription`, `useJsonLd`, `useNoindex`, `useAlternateLanguage`, prerender capture helpers |
+| `@airspeed-co/avionics/utils`    | `classNames`, validation factories (required, email, length, words)                                        |
+| `@airspeed-co/avionics/worker`   | `createContactHandler`, `sendEmail`, `verifyTurnstile`, `rewriteOpenGraph`, `ContactEnv`                   |
+| `@airspeed-co/avionics/airframe` | `createSiteEntry`, `definePages`, `enableClientNavigation`                                                 |
 
 ## Airframe
 

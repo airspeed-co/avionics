@@ -271,7 +271,14 @@ export async function runPreflight({
   }
 
   if (extraChecks) {
-    await extraChecks({ origin, isProduction, html, report, head, metaContent });
+    await extraChecks({
+      origin,
+      isProduction,
+      html,
+      report,
+      head,
+      metaContent,
+    });
   }
 
   console.log(
