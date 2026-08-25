@@ -10,6 +10,7 @@
   },
   "files": [
     "src",
+    "!src/**/*.test.ts",
     "tsconfig.site.json",
     "tsconfig.scripts.json",
     "tsconfig.site-worker.json",
@@ -37,7 +38,8 @@
   },
   "scripts": {
     "check": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.worker.json",
-    "spellcheck": "cspell --no-progress ."
+    "spellcheck": "cspell --no-progress .",
+    "test": "vitest run"
   },
   "peerDependencies": {
     "preact": "^10.29.0",
@@ -56,11 +58,13 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260730.1",
     "cspell": "^10.0.1",
+    "jsdom": "^29.1.1",
     "preact": "^10.29.7",
     "preact-iso": "^2.12.0",
     "sharp": "^0.35.3",
     "typescript": "^6.0.3",
-    "vite": "8.1.5"
+    "vite": "8.1.5",
+    "vitest": "^4.1.11"
   },
   "dependencies": {
     "@preact/preset-vite": "^2.10.6",
