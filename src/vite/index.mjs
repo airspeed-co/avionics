@@ -12,6 +12,8 @@
  *   production.
  * - sitemap emission (./sitemap.mjs), when the `sitemap` option is passed.
  * - the preact preset with prerendering enabled, routes from `prerender`.
+ * - critical CSS inlining (./inline-css.mjs): prerendered pages carry their
+ *   stylesheet in a <style> tag instead of a render-blocking link.
  *
  * The factory is async (Vite awaits promises in the plugins array) because
  * the preact preset needs the config's prerender routes at construction. The
@@ -31,6 +33,7 @@ import preact from "@preact/preset-vite";
 import { breakpointsPlugin } from "./breakpoints.mjs";
 import { corePlugin } from "./core.mjs";
 import { indexHtmlPlugin } from "./index-html.mjs";
+import { inlineCssPlugin } from "./inline-css.mjs";
 import { sitemapPlugin } from "./sitemap.mjs";
 
 /**
@@ -96,6 +99,8 @@ export async function avionics({
       },
     }),
   );
+
+  plugins.push(inlineCssPlugin());
 
   return plugins;
 }
