@@ -4,6 +4,7 @@ import type { FieldConfig } from "../../domain/form";
 import { Button } from "../button/button";
 import { FormField } from "../form-field/form-field";
 import { useTurnstile } from "./turnstile";
+import type { FormErrorStage } from "./use-form";
 import { useForm } from "./use-form";
 
 interface FormProperties<Key extends string> {
@@ -27,6 +28,12 @@ interface FormProperties<Key extends string> {
    * the visitor to try again and name another way to get in touch.
    */
   verificationFailedMessage?: string;
+  /** Called once when the submission is accepted, e.g. to record an
+   *  analytics conversion. */
+  onSent?: () => void;
+  /** Called when a submit attempt fails, with the failing stage and its
+   *  detail (see UseFormOptions.onError). */
+  onError?: (stage: FormErrorStage, detail?: string) => void;
 }
 
 /**
@@ -58,6 +65,8 @@ export function Form<Key extends string>(props: FormProperties<Key>) {
     errorFallback: props.errorFallback,
     getToken,
     verificationFailedMessage: props.verificationFailedMessage,
+    onSent: props.onSent,
+    onError: props.onError,
   });
 
   if (status === "sent") {

@@ -27,6 +27,7 @@
     "./worker": "./src/worker/index.ts",
     "./preflight": "./src/preflight/index.mjs",
     "./airframe": "./src/airframe/index.ts",
+    "./analytics": "./src/analytics/index.ts",
     "./images": "./src/images/index.mjs",
     "./config": "./src/config/index.mjs",
     "./vite": "./src/vite/index.mjs",

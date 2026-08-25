@@ -24,7 +24,23 @@ export interface UseFormOptions<Key extends string> {
    * seeing a generic failure.
    */
   verificationFailedMessage?: string;
+  /** Called once when the submission is accepted, e.g. to record an
+   *  analytics conversion. */
+  onSent?: () => void;
+  /**
+   * Called when a submit attempt fails, with the stage that failed:
+   * "validation" (client-side rules), "verification" (the bot check could
+   * not produce a token), or "server" (the endpoint rejected the submission
+   * or was unreachable). The detail is the failing field's name for
+   * validation (stable across locales, unlike the message copy) and the
+   * error message for server (always English, code-controlled). For
+   * analytics on form friction; never passes what the visitor typed.
+   */
+  onError?: (stage: FormErrorStage, detail?: string) => void;
 }
+
+/** The stage a failed submit attempt died at (see UseFormOptions.onError). */
+export type FormErrorStage = "validation" | "verification" | "server";
 
 export function useForm<Key extends string>({
   fields,
@@ -32,6 +48,8 @@ export function useForm<Key extends string>({
   errorFallback = "Something went wrong.",
   getToken,
   verificationFailedMessage = errorFallback,
+  onSent,
+  onError,
 }: UseFormOptions<Key>) {
   const emptyForm = Object.fromEntries(
     fields.map((field) => [field.name, ""]),
@@ -78,13 +96,16 @@ export function useForm<Key extends string>({
 
     setAttempted(true);
 
-    if (validateForm(fields, form)) {
+    const validationError = validateForm(fields, form);
+
+    if (validationError) {
       setTouched(
         Object.fromEntries(fields.map((field) => [field.name, true])) as Record<
           Key,
           boolean
         >,
       );
+      onError?.("validation", validationError.name);
 
       return;
     }
@@ -102,6 +123,7 @@ export function useForm<Key extends string>({
         // Never send unverified and never pretend: tell the visitor.
         setStatus("error");
         setServerError(verificationFailedMessage);
+        onError?.("verification");
 
         return;
       }
@@ -132,9 +154,13 @@ export function useForm<Key extends string>({
       }
 
       setStatus("sent");
+      onSent?.();
     } catch (err) {
+      const message = err instanceof Error ? err.message : errorFallback;
+
       setStatus("error");
-      setServerError(err instanceof Error ? err.message : errorFallback);
+      setServerError(message);
+      onError?.("server", message);
     }
   }
 
