@@ -76,11 +76,23 @@ export function initAnalytics({ measurementId, origin }: AnalyticsOptions) {
   if (typeof window === "undefined") return;
   if (optedOut()) return;
 
-  const script = document.createElement("script");
+  // The dataLayer stub is set up right away so early events queue, but the
+  // gtag script itself (a few hundred KiB of main-thread work) waits for the
+  // window load event instead of competing with hydration; it drains the
+  // queue when it arrives.
+  const injectScript = () => {
+    const script = document.createElement("script");
 
-  script.async = true;
-  script.src = `https://www.googletagmanager.com/gtag/js?id=${measurementId}`;
-  document.head.append(script);
+    script.async = true;
+    script.src = `https://www.googletagmanager.com/gtag/js?id=${measurementId}`;
+    document.head.append(script);
+  };
+
+  if (document.readyState === "complete") {
+    injectScript();
+  } else {
+    window.addEventListener("load", injectScript, { once: true });
+  }
 
   window.dataLayer = window.dataLayer ?? [];
   // GA expects the arguments object itself on the dataLayer; an array from

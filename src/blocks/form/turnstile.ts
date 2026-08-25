@@ -139,23 +139,47 @@ export function useTurnstile(
     return { turnstile, id };
   }, [siteKey, container]);
 
-  // Warm up on mount so the script and widget are ready before the first
-  // submit. A failure here is not surfaced: getToken retries at submit time
-  // and reports the failure to the visitor then.
+  // Warm up when the form nears the viewport, so the script and widget are
+  // ready before the first submit without the challenge competing with
+  // hydration for the main thread on page load (forms usually sit below the
+  // fold, and most visitors never submit). A failure here is not surfaced:
+  // getToken retries at submit time and reports the failure to the visitor
+  // then.
   useEffect(() => {
-    if (!siteKey) {
+    if (!siteKey || !container.current) {
       return;
     }
 
-    ensureWidget().catch(() => undefined);
+    const warmUp = () => ensureWidget().catch(() => undefined);
+
+    let observer: IntersectionObserver | undefined;
+
+    if (typeof IntersectionObserver === "undefined") {
+      warmUp();
+    } else {
+      observer = new IntersectionObserver(
+        (entries) => {
+          if (entries.some((entry) => entry.isIntersecting)) {
+            observer?.disconnect();
+            warmUp();
+          }
+        },
+        // Fire one viewport-height early: the widget is ready by the time
+        // the visitor has scrolled to the form and started typing.
+        { rootMargin: "100%" },
+      );
+      observer.observe(container.current);
+    }
 
     return () => {
+      observer?.disconnect();
+
       if (widgetId.current) {
         window.turnstile?.remove(widgetId.current);
         widgetId.current = undefined;
       }
     };
-  }, [siteKey, ensureWidget]);
+  }, [siteKey, container, ensureWidget]);
 
   const getToken = useCallback(async (): Promise<string> => {
     const { turnstile, id } = await ensureWidget();

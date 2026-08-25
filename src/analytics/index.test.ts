@@ -32,6 +32,7 @@ function pushedEntries() {
 }
 
 beforeEach(() => {
+  vi.restoreAllMocks();
   localStorage.clear();
   document.head.querySelectorAll("script").forEach((script) => script.remove());
   delete window.dataLayer;
@@ -78,6 +79,23 @@ describe("initAnalytics", () => {
     expect(
       pushedEntries().filter((entry) => entry[0] === "config"),
     ).toHaveLength(1);
+  });
+
+  it("defers the gtag script to the window load event", async () => {
+    vi.spyOn(document, "readyState", "get").mockReturnValue("loading");
+
+    const { initAnalytics } = await loadAnalytics();
+
+    initAnalytics({ measurementId: MEASUREMENT_ID, origin: ORIGIN });
+
+    // The queue is live immediately so early events are not lost; only the
+    // heavy script itself waits for the load event.
+    expect(gtagScript()).toBeNull();
+    expect(pushedEntries()).toContainEqual(["config", MEASUREMENT_ID]);
+
+    window.dispatchEvent(new Event("load"));
+
+    expect(gtagScript()).not.toBeNull();
   });
 
   it("?analytics=off opts the browser out, and it persists", async () => {
