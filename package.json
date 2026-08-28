@@ -1,6 +1,6 @@
 {
   "name": "@airspeed-co/avionics",
-  "version": "0.2.0",
+  "version": "0.14.0",
   "description": "Shared structural core for Airspeed Co. websites: form blocks, validation, head baking, and the Cloudflare Worker contact handler. Ships raw Preact + TypeScript source; the consuming site's Vite compiles it.",
   "type": "module",
   "license": "MIT",
@@ -43,6 +43,10 @@
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
+  "dependencies": {
+    "browserslist": "^4.28.8",
+    "lightningcss": "^1.33.0"
+  },
   "peerDependencies": {
     "preact": "^10.29.0",
     "preact-iso": "^2.12.0",
@@ -62,6 +66,7 @@
     "@preact/preset-vite": "^2.10.6",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/preact": "^3.2.4",
+    "@types/node": "^26.4.0",
     "cspell": "^10.0.1",
     "jsdom": "^29.1.1",
     "preact": "^10.29.7",
@@ -71,9 +76,5 @@
     "typescript": "^6.0.3",
     "vite": "8.1.5",
     "vitest": "^4.1.11"
-  },
-  "dependencies": {
-    "browserslist": "^4.28.8",
-    "lightningcss": "^1.33.0"
   }
 }

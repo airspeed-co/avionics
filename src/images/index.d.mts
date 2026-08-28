@@ -16,7 +16,7 @@ export interface Crop {
 }
 
 export interface ImageEntry {
-  /** File name inside `sourceDir`. */
+  /** File path relative to `sourceDir`, "/"-separated (subfolders welcome). */
   source: string;
   /** Variant widths, overriding the default. */
   widths?: number[];
