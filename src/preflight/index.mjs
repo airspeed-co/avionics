@@ -32,6 +32,10 @@
  *   GET with 405
  * @property {string[]} [wellKnownFiles] paths that must return 200,
  *   defaulting to robots.txt, sitemap.xml, and favicon.svg
+ * @property {Record<string, string[]>} [redirects] launch redirects to
+ *   verify, current path -> previous paths (the same map the site's Worker
+ *   passes to createRedirects): every previous path must 301 to its current
+ *   path, and the current path itself must resolve 200
  * @property {(context: PreflightContext) => Promise<void> | void} [extraChecks]
  *   site-specific checks, run with the shared helpers before the summary
  */
@@ -75,6 +79,7 @@ export async function runPreflight({
   origin: originOption,
   apiEndpoints = [],
   wellKnownFiles = ["/robots.txt", "/sitemap.xml", "/favicon.svg"],
+  redirects = {},
   extraChecks,
 }) {
   const origin = (originOption ?? `https://${productionHost}`).replace(
@@ -228,6 +233,51 @@ export async function runPreflight({
     `all ${sitemapPaths.length} sitemap URLs return 200`,
     `${brokenSitemapUrls} broken`,
   );
+
+  // --- Launch redirects: every previous path 301s to its current page ---
+  // The map states where the old site's URLs moved (the same data the
+  // Worker serves), so a dropped or mistyped entry is caught against the
+  // deployment instead of decaying into 404s in search indexes.
+  let brokenRedirects = 0;
+  let redirectCount = 0;
+
+  for (const [target, previousPaths] of Object.entries(redirects)) {
+    const destination = new URL(target, origin).href;
+    const targetPage = new URL(target, origin);
+
+    targetPage.hash = "";
+
+    const targetResponse = await fetch(targetPage.href);
+
+    if (targetResponse.status !== 200) {
+      brokenRedirects += 1;
+      report(false, `redirect target ${target}`, `${targetResponse.status}`);
+    }
+
+    for (const previous of previousPaths) {
+      redirectCount += 1;
+
+      const response = await head(`${origin}${previous}`);
+      const location = response.headers.get("location") ?? "";
+
+      if (response.status !== 301 || location !== destination) {
+        brokenRedirects += 1;
+        report(
+          false,
+          `301 ${previous} -> ${target}`,
+          `${response.status} -> ${location}`,
+        );
+      }
+    }
+  }
+
+  if (redirectCount > 0) {
+    report(
+      brokenRedirects === 0,
+      `all ${redirectCount} launch redirects 301 to live pages`,
+      `${brokenRedirects} broken`,
+    );
+  }
 
   // --- Unknown paths are hard 404s ---
   const missing = await fetch(`${origin}/definitely-not-a-page`);

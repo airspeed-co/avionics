@@ -36,6 +36,13 @@ export interface PreflightOptions {
    * favicon.svg.
    */
   wellKnownFiles?: string[];
+  /**
+   * Launch redirects to verify, current path -> previous paths (the same
+   * map the site's Worker passes to createRedirects): every previous path
+   * must 301 to its current path, and the current path itself must resolve
+   * 200.
+   */
+  redirects?: Record<string, string[]>;
   /** Site-specific checks, run with the shared helpers before the summary. */
   extraChecks?: (context: PreflightContext) => Promise<void> | void;
 }
