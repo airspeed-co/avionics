@@ -1,6 +1,6 @@
 import type { AnchorHTMLAttributes, ButtonHTMLAttributes } from "preact";
 
-type ButtonVariant = "primary" | "inverted";
+export type ButtonVariant = "primary" | "inverted";
 
 /**
  * Accepts every native button attribute (type, disabled, onClick, ...) plus an

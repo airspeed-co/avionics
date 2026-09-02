@@ -164,3 +164,27 @@ describe("Form validation flow (reward early, punish late)", () => {
     );
   });
 });
+
+describe("Submit button variant", () => {
+  it("renders the primary treatment by default", () => {
+    renderForm();
+
+    expect(screen.getByRole("button", { name: "Send" })).toHaveClass(
+      "button-primary",
+    );
+  });
+
+  it("applies the variant passed as submitVariant", () => {
+    render(
+      <Form
+        fields={contactFormFields}
+        endpoint="/api/contact"
+        submitVariant="inverted"
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Send" })).toHaveClass(
+      "button-inverted",
+    );
+  });
+});

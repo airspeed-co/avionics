@@ -1,6 +1,7 @@
 import { useRef } from "preact/hooks";
 
 import type { FieldConfig } from "../../domain/form";
+import type { ButtonVariant } from "../button/button";
 import { Button } from "../button/button";
 import { FormField } from "../form-field/form-field";
 import { useTurnstile } from "./turnstile";
@@ -12,6 +13,9 @@ interface FormProperties<Key extends string> {
   /** URL the form data is POSTed to as JSON. */
   endpoint: string;
   submitLabel?: string;
+  /** Color treatment of the submit button (Button's `variant`); primary when
+   *  omitted. */
+  submitVariant?: ButtonVariant;
   sendingLabel?: string;
   successMessage?: string;
   /** Shown when the server rejects the submission without its own message. */
@@ -121,6 +125,7 @@ export function Form<Key extends string>(props: FormProperties<Key>) {
 
       <Button
         type="submit"
+        variant={props.submitVariant}
         class="form-submit"
         disabled={status === "sending"}
         onPointerDown={keepFocusOnPress}
