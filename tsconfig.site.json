@@ -14,6 +14,11 @@
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
     "resolveJsonModule": true,
+    // A site module that scripts/preflight.mjs imports (its redirects map,
+    // say) must write its own relative imports with the real .ts extension,
+    // the form Node's type stripping resolves; noEmit makes this legal here
+    // and Vite resolves the extension either way.
+    "allowImportingTsExtensions": true,
     "jsx": "react-jsx",
     "jsxImportSource": "preact",
     "types": ["vite/client"]

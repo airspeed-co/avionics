@@ -40,7 +40,9 @@ export interface PreflightOptions {
    * Launch redirects to verify, current path -> previous paths (the same
    * map the site's Worker passes to createRedirects): every previous path
    * must 301 to its current path, and the current path itself must resolve
-   * 200.
+   * 200. The module holding the map is loaded by Node (type stripping) when
+   * preflight imports it, so its own relative imports need the .ts
+   * extension (the site tsconfig bases allow it).
    */
   redirects?: Record<string, string[]>;
   /** Site-specific checks, run with the shared helpers before the summary. */

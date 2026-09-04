@@ -19,6 +19,9 @@
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
     "resolveJsonModule": true,
+    // See tsconfig.site.json: modules shared with the Node scripts import
+    // with a .ts extension, which the worker project must accept too.
+    "allowImportingTsExtensions": true,
     // vite/client types import.meta.env, which worker code built by Vite may
     // read; it does not pull in the DOM lib.
     "types": ["vite/client"]
