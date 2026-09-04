@@ -138,6 +138,11 @@ export function enableClientNavigation(
     event.preventDefault();
 
     if (samePage) {
+      // A link to the page's own bare URL behaves like a fresh load of it:
+      // a hash left over from an earlier anchor jump (/#contact, say) is
+      // dropped from the address bar, so a reload or a copied link lands
+      // at the top like the visitor did.
+      if (location.hash) history.pushState(null, "", link.href);
       scrollTo({ top: 0 });
 
       return;
