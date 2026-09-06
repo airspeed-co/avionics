@@ -91,6 +91,8 @@ export function corePlugin({ config, configPath, importConfig }) {
   let manifestPath;
   /** @type {import("../images/index.mjs").GenerateOptions | undefined} */
   let imageOptions;
+  /** Vite's command: the dev server tolerates image drift, builds do not. */
+  let command = "build";
   /** @type {Promise<void> | undefined} */
   let imagesReady;
 
@@ -107,6 +109,7 @@ export function corePlugin({ config, configPath, importConfig }) {
       images: recordFromEntries(images.entries),
       manifestPath,
       publicPath: images.publicPath ?? defaultPublicPath(outputDir),
+      drift: command === "serve" ? "warn" : "error",
       ...(images.defaultWidths && { defaultWidths: images.defaultWidths }),
       ...(images.defaultFormats && { defaultFormats: images.defaultFormats }),
     };
@@ -154,6 +157,7 @@ export function corePlugin({ config, configPath, importConfig }) {
 
     configResolved(resolved) {
       root = resolved.root;
+      command = resolved.command;
       manifestPath = path.resolve(root, "node_modules/.avionics/images.json");
 
       resolveImageOptions(config);
@@ -192,8 +196,23 @@ export function corePlugin({ config, configPath, importConfig }) {
         if (!fromConfig && !fromSource) return;
 
         if (fromConfig) resolveImageOptions(await importConfig());
-        imagesReady = ensureImages();
-        await imagesReady;
+
+        // A regeneration that fails (a bad crop, a half-copied file) logs and
+        // leaves the last good manifest in place, so one wrong edit does not
+        // 500 every page until it is fixed.
+        const next = ensureImages();
+
+        try {
+          await next;
+        } catch (error) {
+          console.error(
+            `[avionics] image regeneration failed; still serving the previous images.\n${error instanceof Error ? error.message : error}`,
+          );
+
+          return;
+        }
+
+        imagesReady = next;
 
         for (const environment of Object.values(server.environments)) {
           for (const module of environment.moduleGraph.getModulesByFile(

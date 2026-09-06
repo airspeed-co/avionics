@@ -5,7 +5,12 @@ import path from "node:path";
 import sharp from "sharp";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
-import { generateImages } from "./index.mjs";
+import {
+  entrySnippet,
+  findDrift,
+  generateImages,
+  tolerateDrift,
+} from "./index.mjs";
 
 /** A tiny raster fixture; alpha so the png-fallback path is exercised. */
 const fixture = (width: number, height: number) =>
@@ -74,6 +79,46 @@ describe("generateImages with nested sources", () => {
     expect(manifest.images.logo.formats).toEqual(["avif", "png"]);
   });
 
+  it("in warn mode skips an unclaimed file and a missing source, and still generates", async () => {
+    await writeFile(
+      path.join(sourceDir, "photos", "stray.png"),
+      await fixture(8, 8),
+    );
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    await generateImages({
+      sourceDir,
+      outputDir,
+      manifestPath,
+      drift: "warn",
+      images: {
+        team: { source: "photos/team.png", widths: [32] },
+        ghost: { source: "photos/ghost.png", widths: [32] },
+      },
+    });
+
+    const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+
+    expect(Object.keys(manifest.images)).toEqual(["team"]);
+    const messages = warn.mock.calls.map(([message]) => String(message));
+
+    // The missing entry, then every unclaimed file (logo.png from the first
+    // test is unclaimed here too), each with an entry to paste.
+    expect(messages).toHaveLength(3);
+    expect(messages[0]).toMatch(/"ghost" skipped.*ghost\.png does not exist/s);
+    expect(messages.slice(1)).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(
+          /stray\.png has no manifest entry.*\{ name: "stray", source: "photos\/stray\.png" \},/s,
+        ),
+        expect.stringMatching(
+          /logo\.png has no manifest entry.*\{ name: "logo", source: "brand\/logo\.png" \},/s,
+        ),
+      ]),
+    );
+    warn.mockRestore();
+  });
+
   it("still hard-errors on an unclaimed file inside a subfolder", async () => {
     await writeFile(
       path.join(sourceDir, "photos", "stray.png"),
@@ -95,5 +140,36 @@ describe("generateImages with nested sources", () => {
         },
       }),
     ).rejects.toThrow(/no manifest entry.*stray\.png/s);
+  });
+});
+
+describe("drift helpers", () => {
+  const images = {
+    team: { source: "photos/team.png" },
+    ghost: { source: "photos/ghost.png" },
+  };
+  const files = ["photos/team.png", "brand/logo.png"];
+
+  it("reports both directions", () => {
+    expect(findDrift(images, files)).toEqual({
+      missing: ["ghost"],
+      unclaimed: ["brand/logo.png"],
+    });
+  });
+
+  it("names the snippet after the file, without folder or extension", () => {
+    expect(entrySnippet("brand/logo-mark.png")).toBe(
+      '{ name: "logo-mark", source: "brand/logo-mark.png" }',
+    );
+  });
+
+  it("tolerateDrift drops missing entries and reports through the given warn", () => {
+    const messages: string[] = [];
+    const kept = tolerateDrift("images", images, files, (message) =>
+      messages.push(message),
+    );
+
+    expect(Object.keys(kept)).toEqual(["team"]);
+    expect(messages).toHaveLength(2);
   });
 });

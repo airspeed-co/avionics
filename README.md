@@ -53,6 +53,8 @@ export const { prerender } = createSiteEntry({
 - `Form`: `.form`, `.form-submit`, `.form-error`, `.form-success`, `.form-turnstile` (empty unless the bot check needs a click; give it a margin)
 - `FormField`: `.field`, `.field-error`, `.field-error-message`
 
+**Images.** `Picture` renders one manifest entry; pass `sources` (`{ name, media, sizes? }`) for art direction, each a separate manifest entry with its own crop (two entries may share a source file), rendered as `<source media>` groups the browser resolves before fetching. Manifest drift (an entry whose file is missing, a file no entry claims) fails the build; the dev server warns instead, prints an entry to paste for each unclaimed file, and keeps serving the last good manifest when a regeneration fails.
+
 **Titles.** `useTitle` takes the finished document title; keep a `formatTitle` helper in the site's config. `resetServerHead(defaultTitle)` takes the default for the same reason.
 
 **Contact form copy and wiring.** `buildContactFormFields(copy)` takes the site's `ContactFormCopy` strings (per locale) and returns the field configs used by both the `Form` UI and the Worker:

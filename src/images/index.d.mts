@@ -51,6 +51,16 @@ export interface GenerateOptions {
   defaultWidths?: number[];
   /** Formats for entries without their own. Default ["avif", "jpg"]. */
   defaultFormats?: Format[];
+  /**
+   * What to do when the manifest and the source directory disagree (an
+   * entry whose file is missing, or a file no entry claims). "error" (the
+   * default) throws, listing every offender, which is what builds want.
+   * "warn" logs each one, prints a ready-to-paste entry for every unclaimed
+   * file, drops entries whose file is missing, and carries on with the rest;
+   * the dev server uses it so a new photo never takes the site down before
+   * the config catches up.
+   */
+  drift?: "error" | "warn";
 }
 
 /**
@@ -74,3 +84,28 @@ export function checkImages(options: GenerateOptions): Promise<void>;
  * path.
  */
 export function defaultPublicPath(outputDir: string): string;
+
+/**
+ * Both directions of drift between a manifest and the files found under its
+ * source directory: entry names whose file is absent, and files no entry
+ * claims.
+ */
+export function findDrift(
+  images: Record<string, ImageEntry>,
+  sourceFiles: string[],
+): { missing: string[]; unclaimed: string[] };
+
+/** A manifest entry to paste for an unclaimed source file. */
+export function entrySnippet(file: string): string;
+
+/**
+ * The dev-server counterpart of the strict drift check: warns instead of
+ * throwing, prints an entry snippet for every unclaimed file, and returns the
+ * manifest without entries whose source is missing.
+ */
+export function tolerateDrift(
+  sourceDir: string,
+  images: Record<string, ImageEntry>,
+  sourceFiles: string[],
+  warn?: (message: string) => void,
+): Record<string, ImageEntry>;

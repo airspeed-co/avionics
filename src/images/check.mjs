@@ -8,7 +8,7 @@ import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { defaultPublicPath, entryFingerprint } from "./manifest.mjs";
-import { checkDrift, listSourceFiles } from "./sources.mjs";
+import { checkDrift, listSourceFiles, tolerateDrift } from "./sources.mjs";
 
 /**
  * Verifies the generated manifest and output files are current with the
@@ -27,6 +27,7 @@ export async function checkImages({
   publicPath,
   defaultWidths = [480, 960],
   defaultFormats = ["avif", "jpg"],
+  drift = "error",
 }) {
   if (!manifestPath) {
     throw new Error("checkImages requires manifestPath");
@@ -34,7 +35,11 @@ export async function checkImages({
 
   const sourceFiles = await listSourceFiles(sourceDir);
 
-  checkDrift(sourceDir, images, sourceFiles);
+  if (drift === "warn") {
+    images = tolerateDrift(sourceDir, images, sourceFiles);
+  } else {
+    checkDrift(sourceDir, images, sourceFiles);
+  }
 
   const basePath = publicPath ?? defaultPublicPath(outputDir);
   const manifest = await readFile(manifestPath, "utf8").then(

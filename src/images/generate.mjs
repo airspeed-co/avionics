@@ -14,7 +14,7 @@ import path from "node:path";
 import sharp from "sharp";
 
 import { defaultPublicPath, entryFingerprint } from "./manifest.mjs";
-import { checkDrift, listSourceFiles } from "./sources.mjs";
+import { checkDrift, listSourceFiles, tolerateDrift } from "./sources.mjs";
 
 /** @type {Record<import("./index.mjs").Format, { toFormat: "avif" | "jpeg" | "png" | "webp", options: object }>} */
 const formatSettings = {
@@ -66,10 +66,15 @@ export async function generateImages({
   publicPath,
   defaultWidths = [480, 960],
   defaultFormats = ["avif", "jpg"],
+  drift = "error",
 }) {
   const sourceFiles = await listSourceFiles(sourceDir);
 
-  checkDrift(sourceDir, images, sourceFiles);
+  if (drift === "warn") {
+    images = tolerateDrift(sourceDir, images, sourceFiles);
+  } else {
+    checkDrift(sourceDir, images, sourceFiles);
+  }
   await mkdir(outputDir, { recursive: true });
 
   const basePath = publicPath ?? defaultPublicPath(outputDir);

@@ -84,3 +84,4 @@
 export { checkImages } from "./check.mjs";
 export { generateImages } from "./generate.mjs";
 export { defaultPublicPath } from "./manifest.mjs";
+export { entrySnippet, findDrift, tolerateDrift } from "./sources.mjs";
