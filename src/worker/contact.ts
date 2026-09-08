@@ -24,12 +24,27 @@ function json(body: ApiSuccessResponse | ApiErrorResponse, status: number) {
   });
 }
 
+export interface ContactHandlerOptions {
+  /**
+   * Builds the subject line from the validated submission; defaults to
+   * "Contact form: <name>". Lets a site that mounts the handler twice (a
+   * contact form and, say, a testimonial form) tell the two apart in the
+   * inbox.
+   */
+  subject?: (submission: { name: string; email: string }) => string;
+}
+
 /**
  * Builds the POST /api/contact handler for a site. The fields carry the
- * server-side validation (the site builds them from its contact-form copy);
- * addresses come from the env bindings (see ContactEnv).
+ * server-side validation (the site builds them from its contact-form copy,
+ * or from any subset of the contact keys: a form that leaves email optional
+ * passes a field list without the required validation, and the email then
+ * gets no Reply-To); addresses come from the env bindings (see ContactEnv).
  */
-export function createContactHandler(fields: FieldConfig<ContactFormKey>[]) {
+export function createContactHandler(
+  fields: FieldConfig<ContactFormKey>[],
+  options: ContactHandlerOptions = {},
+) {
   return async function handleContact(
     request: Request,
     env: ContactEnv,
@@ -83,7 +98,11 @@ export function createContactHandler(fields: FieldConfig<ContactFormKey>[]) {
     const phone = payload.phone?.trim() ?? "";
     const message = payload.message?.trim() ?? "";
 
-    const lines = [`Name: ${name}`, `Email: ${email}`];
+    const lines = [`Name: ${name}`];
+
+    if (email) {
+      lines.push(`Email: ${email}`);
+    }
 
     if (phone) {
       lines.push(`Phone: ${phone}`);
@@ -91,8 +110,10 @@ export function createContactHandler(fields: FieldConfig<ContactFormKey>[]) {
 
     lines.push("", message);
 
-    // Reply-To is the submitter, so replying in the inbox reaches them; the
-    // From stays on the verified domain (CONTACT_FROM_NAME shows the brand).
+    // Reply-To is the submitter, so replying in the inbox reaches them (left
+    // off when the form made email optional and none was given; Resend
+    // rejects an empty address); the From stays on the verified domain
+    // (CONTACT_FROM_NAME shows the brand).
     const from = env.CONTACT_FROM_NAME
       ? `${env.CONTACT_FROM_NAME} <${env.CONTACT_FROM}>`
       : env.CONTACT_FROM;
@@ -101,8 +122,10 @@ export function createContactHandler(fields: FieldConfig<ContactFormKey>[]) {
       await sendEmail(env, {
         from,
         to: env.CONTACT_TO,
-        replyTo: email,
-        subject: `Contact form: ${name}`,
+        replyTo: email || undefined,
+        subject: options.subject
+          ? options.subject({ name, email })
+          : `Contact form: ${name}`,
         text: lines.join("\n"),
       });
     } catch (err) {
