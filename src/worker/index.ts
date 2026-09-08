@@ -1,3 +1,4 @@
+export * from "./canonical";
 export * from "./contact";
 export * from "./html";
 export * from "./redirects";
