@@ -70,6 +70,58 @@ function optedOut() {
   }
 }
 
+/** Any of these marks the visitor as engaged with the page. */
+const INTERACTION_EVENTS = [
+  "pointerdown",
+  "keydown",
+  "touchstart",
+  "wheel",
+  "scroll",
+];
+
+/** How long after the load event a visitor who has not interacted yet still
+ *  waits before the gtag script loads anyway. */
+const GRACE_PERIOD_MS = 3000;
+
+/**
+ * Runs the callback once the page has settled: after the window load event,
+ * on the visitor's first interaction or when the grace period runs out,
+ * whichever comes first. Loading gtag on the load event itself turned out to
+ * race the first paint: on a fast connection load fires a few milliseconds
+ * before the page paints, so the 170 KiB script lands inside the largest
+ * contentful paint window and Lighthouse charges it against LCP (bimodal
+ * mobile scores, 99 or 80, depending on which side of the paint it fell).
+ * Waiting for engagement keeps it out of the page's first seconds for
+ * everyone, and a visitor who scrolls or taps gets measured right away.
+ */
+function whenSettled(callback: () => void) {
+  const armAfterLoad = () => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const fire = () => {
+      clearTimeout(timer);
+
+      for (const type of INTERACTION_EVENTS) {
+        window.removeEventListener(type, fire);
+      }
+
+      callback();
+    };
+
+    timer = setTimeout(fire, GRACE_PERIOD_MS);
+
+    for (const type of INTERACTION_EVENTS) {
+      window.addEventListener(type, fire, { passive: true });
+    }
+  };
+
+  if (document.readyState === "complete") {
+    armAfterLoad();
+  } else {
+    window.addEventListener("load", armAfterLoad, { once: true });
+  }
+}
+
 /** Loads gtag and starts measurement, when the gates above allow it. */
 export function initAnalytics({ measurementId, origin }: AnalyticsOptions) {
   if (!measurementId) return;
@@ -77,22 +129,16 @@ export function initAnalytics({ measurementId, origin }: AnalyticsOptions) {
   if (optedOut()) return;
 
   // The dataLayer stub is set up right away so early events queue, but the
-  // gtag script itself (a few hundred KiB of main-thread work) waits for the
-  // window load event instead of competing with hydration; it drains the
-  // queue when it arrives.
-  const injectScript = () => {
+  // gtag script itself (a few hundred KiB of main-thread work) waits until
+  // the page has settled (see whenSettled) instead of competing with
+  // hydration and the first paint; it drains the queue when it arrives.
+  whenSettled(() => {
     const script = document.createElement("script");
 
     script.async = true;
     script.src = `https://www.googletagmanager.com/gtag/js?id=${measurementId}`;
     document.head.append(script);
-  };
-
-  if (document.readyState === "complete") {
-    injectScript();
-  } else {
-    window.addEventListener("load", injectScript, { once: true });
-  }
+  });
 
   window.dataLayer = window.dataLayer ?? [];
   // GA expects the arguments object itself on the dataLayer; an array from

@@ -45,6 +45,14 @@ export interface PreflightOptions {
    * extension (the site tsconfig bases allow it).
    */
   redirects?: Record<string, string[]>;
+  /**
+   * Hosts, besides the origin's own, that the served home page may load
+   * scripts from. Empty by default: avionics sites inject their third-party
+   * scripts (gtag) at runtime, so any other script in the HTML was added at
+   * the edge by a dashboard toggle (Cloudflare Web Analytics, Rocket Loader)
+   * that nobody reviewed.
+   */
+  allowedScriptHosts?: string[];
   /** Site-specific checks, run with the shared helpers before the summary. */
   extraChecks?: (context: PreflightContext) => Promise<void> | void;
 }

@@ -36,9 +36,23 @@
  *   verify, current path -> previous paths (the same map the site's Worker
  *   passes to createRedirects): every previous path must 301 to its current
  *   path, and the current path itself must resolve 200
+ * @property {string[]} [allowedScriptHosts] hosts, besides the origin's own,
+ *   that the served home page may load scripts from; empty by default,
+ *   since avionics sites inject their third-party scripts (gtag) at runtime
+ *   and any other script in the HTML was added at the edge by a dashboard
+ *   toggle (Cloudflare Web Analytics, Rocket Loader) that nobody reviewed
  * @property {(context: PreflightContext) => Promise<void> | void} [extraChecks]
  *   site-specific checks, run with the shared helpers before the summary
  */
+
+/**
+ * What a browser sends for a page navigation. Edge features that rewrite
+ * HTML (Cloudflare's analytics beacon injection, for one) key on the Accept
+ * header, so a plain fetch would see a page the browser never gets.
+ */
+const NAVIGATION_HEADERS = {
+  accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+};
 
 /**
  * Extracts `content` from the first meta tag whose property or name attribute
@@ -80,6 +94,7 @@ export async function runPreflight({
   apiEndpoints = [],
   wellKnownFiles = ["/robots.txt", "/sitemap.xml", "/favicon.svg"],
   redirects = {},
+  allowedScriptHosts = [],
   extraChecks,
 }) {
   const origin = (originOption ?? `https://${productionHost}`).replace(
@@ -106,7 +121,9 @@ export async function runPreflight({
   }
 
   // --- Home page ---
-  const homeResponse = await fetch(`${origin}/`);
+  const homeResponse = await fetch(`${origin}/`, {
+    headers: NAVIGATION_HEADERS,
+  });
   const html = await homeResponse.text();
 
   report(
@@ -148,6 +165,33 @@ export async function runPreflight({
       `${image.status} ${type}`,
     );
   }
+
+  // --- No third-party scripts slipped into the served HTML ---
+  // The build emits only same-origin scripts and injects gtag at runtime, so
+  // a cross-origin script tag in the page as served can only come from an
+  // edge feature switched on in a dashboard (Cloudflare Web Analytics'
+  // beacon, Rocket Loader). Those never show up in a diff, and each one is
+  // another script competing with the page's first seconds, so the
+  // deployment fails until the toggle is turned off or the host is listed
+  // in allowedScriptHosts on purpose.
+  const originHost = new URL(origin).hostname;
+  const foreignScriptHosts = new Set();
+
+  for (const [, src] of html.matchAll(
+    /<script\s[^>]*src=["']((?:https?:)?\/\/[^"']+)["']/g,
+  )) {
+    const host = new URL(src, origin).hostname;
+
+    if (host !== originHost && !allowedScriptHosts.includes(host)) {
+      foreignScriptHosts.add(host);
+    }
+  }
+
+  report(
+    foreignScriptHosts.size === 0,
+    "no unexpected third-party scripts in the served HTML",
+    `found ${[...foreignScriptHosts].join(", ")} (an edge toggle such as Cloudflare Web Analytics? pass allowedScriptHosts if intended)`,
+  );
 
   // --- Indexability: production must be indexable, previews must not be ---
   // Either signal counts: the header is what the preview environments set,

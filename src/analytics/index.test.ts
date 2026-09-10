@@ -31,7 +31,13 @@ function pushedEntries() {
   );
 }
 
+/** The visitor's first interaction, which lets the gtag script load. */
+function interact() {
+  window.dispatchEvent(new Event("pointerdown"));
+}
+
 beforeEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
   localStorage.clear();
   document.head.querySelectorAll("script").forEach((script) => script.remove());
@@ -58,6 +64,7 @@ describe("initAnalytics", () => {
       measurementId: MEASUREMENT_ID,
       origin: "https://example.com",
     });
+    interact();
 
     expect(gtagScript()?.getAttribute("src")).toContain(MEASUREMENT_ID);
     expect(pushedEntries()).toContainEqual([
@@ -71,6 +78,7 @@ describe("initAnalytics", () => {
     const { initAnalytics } = await loadAnalytics();
 
     initAnalytics({ measurementId: MEASUREMENT_ID, origin: ORIGIN });
+    interact();
 
     // GA4 treats a present debug_mode key as debug even when false, so the
     // production config call must not carry a params object at all.
@@ -81,7 +89,7 @@ describe("initAnalytics", () => {
     ).toHaveLength(1);
   });
 
-  it("defers the gtag script to the window load event", async () => {
+  it("holds the gtag script until the visitor interacts after load", async () => {
     vi.spyOn(document, "readyState", "get").mockReturnValue("loading");
 
     const { initAnalytics } = await loadAnalytics();
@@ -89,13 +97,58 @@ describe("initAnalytics", () => {
     initAnalytics({ measurementId: MEASUREMENT_ID, origin: ORIGIN });
 
     // The queue is live immediately so early events are not lost; only the
-    // heavy script itself waits for the load event.
+    // heavy script itself waits.
     expect(gtagScript()).toBeNull();
     expect(pushedEntries()).toContainEqual(["config", MEASUREMENT_ID]);
 
-    window.dispatchEvent(new Event("load"));
+    // An interaction before the load event does not count: the script must
+    // not compete with hydration and the first paint.
+    interact();
+    expect(gtagScript()).toBeNull();
 
+    window.dispatchEvent(new Event("load"));
+    expect(gtagScript()).toBeNull();
+
+    interact();
     expect(gtagScript()).not.toBeNull();
+  });
+
+  it("loads the gtag script once, however many interactions follow", async () => {
+    const { initAnalytics } = await loadAnalytics();
+
+    initAnalytics({ measurementId: MEASUREMENT_ID, origin: ORIGIN });
+    window.dispatchEvent(new Event("scroll"));
+    interact();
+    window.dispatchEvent(new Event("keydown"));
+
+    expect(
+      document.head.querySelectorAll(
+        `script[src^="https://www.googletagmanager.com/gtag/js"]`,
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("loads the gtag script after the grace period without interaction", async () => {
+    vi.useFakeTimers();
+
+    const { initAnalytics } = await loadAnalytics();
+
+    initAnalytics({ measurementId: MEASUREMENT_ID, origin: ORIGIN });
+
+    vi.advanceTimersByTime(2999);
+    expect(gtagScript()).toBeNull();
+
+    vi.advanceTimersByTime(1);
+    expect(gtagScript()).not.toBeNull();
+
+    // The interaction listeners are gone with the timer, so a later
+    // interaction does not load the script a second time.
+    interact();
+    expect(
+      document.head.querySelectorAll(
+        `script[src^="https://www.googletagmanager.com/gtag/js"]`,
+      ),
+    ).toHaveLength(1);
   });
 
   it("?analytics=off opts the browser out, and it persists", async () => {
@@ -122,6 +175,7 @@ describe("initAnalytics", () => {
     const { initAnalytics } = await loadAnalytics();
 
     initAnalytics({ measurementId: MEASUREMENT_ID, origin: ORIGIN });
+    interact();
 
     expect(localStorage.getItem("analytics")).toBeNull();
     expect(gtagScript()).not.toBeNull();
