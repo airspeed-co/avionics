@@ -10,6 +10,17 @@
  * watches the config and the source images and regenerates on change;
  * non-image config changes (breakpoints, browsers, prerender) need a dev
  * server restart.
+ *
+ * Dev serves the swapped module no-cache. The stub lives in node_modules,
+ * so Vite hands it (and every module importing it) a ?v= dependency hash
+ * and a max-age=31536000,immutable header, on the theory that nothing in
+ * node_modules changes while the server runs. This module does: after a
+ * regeneration the browser would keep the old manifest from its HTTP cache,
+ * through the full reload and across dev-server restarts, until the tab's
+ * cache was bypassed. A content-derived URL would not help either, since the
+ * importer that names the URL is cached immutable too; no-cache makes the
+ * browser revalidate by etag on every load (a 304 when nothing changed) and
+ * pick up the regenerated manifest.
  */
 
 import { realpathSync } from "node:fs";
@@ -34,7 +45,11 @@ const stubPath = realpathSync(
   ),
 );
 
-/** Realpath that tolerates ids without a file behind them. */
+/**
+ * Realpath that tolerates ids without a file behind them.
+ *
+ * @param {string} id
+ */
 function tryRealpath(id) {
   try {
     return realpathSync(id);
@@ -43,9 +58,25 @@ function tryRealpath(id) {
   }
 }
 
-/** Module id stripped to a comparable file path: no /@fs prefix, no query. */
+/**
+ * Module id stripped to a comparable file path: no /@fs prefix, no query.
+ *
+ * @param {string} id
+ */
 function idToFile(id) {
   return tryRealpath(id.replace(/^\/@fs/, "").replace(/[?#].*$/, ""));
+}
+
+/**
+ * Dev request URL stripped to a comparable file path: root-relative for
+ * files under the root (a normal install), /@fs for files outside it (a
+ * linked package).
+ *
+ * @param {string} url
+ * @param {string} root
+ */
+function urlToFile(url, root) {
+  return idToFile(url.startsWith("/@fs/") ? url : path.join(root, url));
 }
 
 /**
@@ -185,8 +216,30 @@ export function corePlugin({ config, configPath, importConfig }) {
     configureServer(server) {
       if (!imageOptions) return;
 
+      // Vite serves node_modules modules immutable; see the module comment
+      // for why this one must revalidate instead.
+      server.middlewares.use((req, res, next) => {
+        const url = req.url ?? "";
+
+        if (
+          url.includes("manifest-data") &&
+          urlToFile(url, root) === stubPath
+        ) {
+          const setHeader = res.setHeader.bind(res);
+
+          res.setHeader = (name, value) =>
+            setHeader(
+              name,
+              name.toLowerCase() === "cache-control" ? "no-cache" : value,
+            );
+        }
+
+        next();
+      });
+
       server.watcher.add([configPath, imageOptions.sourceDir]);
 
+      /** @param {string} file */
       const regenerate = async (file) => {
         const fromConfig = file === configPath;
         const fromSource = imageOptions
@@ -214,6 +267,9 @@ export function corePlugin({ config, configPath, importConfig }) {
 
         imagesReady = next;
 
+        // Drop the server's cached transform so the next request re-reads
+        // the manifest; the no-cache header above makes sure that request
+        // happens after the reload.
         for (const environment of Object.values(server.environments)) {
           for (const module of environment.moduleGraph.getModulesByFile(
             stubPath,

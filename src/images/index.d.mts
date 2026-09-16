@@ -63,6 +63,22 @@ export interface GenerateOptions {
   drift?: "error" | "warn";
 }
 
+export interface ManifestEntry {
+  /** Variants that actually exist on disk (upscale skips excluded). */
+  widths: number[];
+  /** Output formats, <img> fallback last. */
+  formats: string[];
+  /** Intrinsic width of the largest variant. */
+  width: number;
+  /** Intrinsic height of the largest variant. */
+  height: number;
+  /**
+   * Hash of the source bytes and entry config, compared by checkImages to
+   * detect stale outputs.
+   */
+  fingerprint: string;
+}
+
 /**
  * Generates every variant the manifest declares, deletes stale files from the
  * output directory, and (with `manifestPath`) writes the generated JSON
