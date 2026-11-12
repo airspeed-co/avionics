@@ -1,0 +1,47 @@
+<!doctype html>
+<!-- Contact-sheet template for ../cli/screens.mjs, which fills in the
+     double-braced tokens when the sheet is written. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Screens contact sheet</title>
+    <style>
+      body {
+        margin: 2rem;
+        font-family: system-ui, sans-serif;
+        background: #f4f4f4;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+        gap: 1.5rem;
+      }
+
+      figure {
+        margin: 0;
+      }
+
+      img {
+        display: block;
+        width: 100%;
+        max-height: 24rem;
+        object-fit: cover;
+        object-position: top;
+        background: #ffffff;
+        border: 1px solid #dddddd;
+      }
+
+      figcaption {
+        padding-top: 0.5rem;
+        font-size: 0.875rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Screens contact sheet</h1>
+    <p>Generated {{generated}}. Click a shot for the full page.</p>
+    <div class="grid">{{figures}}</div>
+  </body>
+</html>

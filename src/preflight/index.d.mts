@@ -53,6 +53,11 @@ export interface PreflightOptions {
    * that nobody reviewed.
    */
   allowedScriptHosts?: string[];
+  /**
+   * GA4 measurement id the deployed bundle must carry. Pass "" to fail until
+   * one is set; omit to skip the check.
+   */
+  analyticsMeasurementId?: string;
   /** Site-specific checks, run with the shared helpers before the summary. */
   extraChecks?: (context: PreflightContext) => Promise<void> | void;
 }

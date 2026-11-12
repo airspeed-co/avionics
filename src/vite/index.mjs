@@ -8,9 +8,13 @@
  *   pipeline.
  * - breakpoint injection (./breakpoints.mjs), when `breakpoints` is
  *   configured.
- * - index.html stamping (./index-html.mjs): home title and noindex outside
- *   production.
- * - sitemap emission (./sitemap.mjs), when the `sitemap` option is passed.
+ * - site data (./site-data.mjs): the config's `site` section, served to
+ *   site code as "@airspeed-co/avionics/site".
+ * - index.html stamping (./index-html.mjs): home title, noindex outside
+ *   production, and the site-wide Open Graph tags from `site`.
+ * - sitemap emission (./sitemap.mjs), when the `sitemap` option is passed;
+ *   its origin and locale prefixes default from `site`.
+ * - robots.txt emission (./robots.mjs), when `site` is configured.
  * - the preact preset with prerendering enabled, routes from `prerender`.
  * - critical CSS inlining (./inline-css.mjs): prerendered pages carry their
  *   stylesheet in a <style> tag instead of a render-blocking link.
@@ -30,14 +34,26 @@ import { pathToFileURL } from "node:url";
 
 import preact from "@preact/preset-vite";
 
+import { localePrefixes, resolveSite } from "../config/index.mjs";
 import { breakpointsPlugin } from "./breakpoints.mjs";
 import { corePlugin } from "./core.mjs";
 import { indexHtmlPlugin } from "./index-html.mjs";
 import { inlineCssPlugin } from "./inline-css.mjs";
+import { robotsPlugin } from "./robots.mjs";
+import { siteDataPlugin } from "./site-data.mjs";
 import { sitemapPlugin } from "./sitemap.mjs";
 
+export { avionicsSite } from "./site-data.mjs";
+
 /**
- * @typedef {import("./sitemap.mjs").SitemapOptions} SitemapOptions
+ * @typedef {object} SitemapOptions
+ * @property {string[]} paths locale-agnostic page pathnames ("/", "/audit");
+ *   noindexed pages (the 404) do not belong here
+ * @property {string} [origin] canonical production origin, no trailing
+ *   slash; defaults to the origin of the config's `site`
+ * @property {string[]} [localePrefixes] each locale's home prefix
+ *   (["/", "/es"]); defaults to the prefixes of the config's `site.locales`,
+ *   or a single unprefixed locale without a `site`
  */
 
 /**
@@ -76,6 +92,7 @@ export async function avionics({
   }
 
   const config = await importConfig();
+  const site = resolveSite(config);
 
   /** @type {import("vite").PluginOption[]} */
   const plugins = [corePlugin({ config, configPath, importConfig })];
@@ -84,10 +101,29 @@ export async function avionics({
     plugins.push(breakpointsPlugin(config.breakpoints));
   }
 
-  plugins.push(indexHtmlPlugin(homeTitle));
+  plugins.push(siteDataPlugin(site), indexHtmlPlugin(homeTitle, site));
 
   if (sitemap) {
-    plugins.push(sitemapPlugin(sitemap));
+    const origin = sitemap.origin ?? site?.origin;
+
+    if (!origin) {
+      throw new Error(
+        "avionics: the sitemap needs an origin; add a `site` section to avionics.config.mjs or pass sitemap.origin",
+      );
+    }
+
+    plugins.push(
+      sitemapPlugin({
+        origin,
+        paths: sitemap.paths,
+        localePrefixes:
+          sitemap.localePrefixes ?? (site && localePrefixes(site.locales)),
+      }),
+    );
+  }
+
+  if (site) {
+    plugins.push(robotsPlugin(site.origin));
   }
 
   plugins.push(

@@ -3,14 +3,14 @@
  * ../images/index.d.mts for why the implementation stays .mjs).
  */
 
-import type { PluginOption } from "vite";
+import type { Plugin, PluginOption } from "vite";
 
 export interface SitemapOptions {
   /**
    * Canonical production origin for absolute URLs, no trailing slash
-   * ("https://airspeed.co").
+   * ("https://airspeed.co"). Defaults to the origin of the config's `site`.
    */
-  origin: string;
+  origin?: string;
   /**
    * Locale-agnostic page pathnames ("/", "/audit"). Noindexed pages (the
    * 404) do not belong here.
@@ -18,7 +18,8 @@ export interface SitemapOptions {
   paths: string[];
   /**
    * Each locale's home prefix (["/", "/es"]), matching what the site's
-   * splitLocale parses. Defaults to a single unprefixed locale.
+   * splitLocale parses. Defaults to the prefixes of the config's
+   * `site.locales`, or a single unprefixed locale without a `site`.
    */
   localePrefixes?: string[];
 }
@@ -50,9 +51,24 @@ export interface AvionicsPluginOptions {
  * shared plugin set: base config (preact dedupe, avionics served as source,
  * Lightning CSS with the site's browser targets), the image pipeline,
  * breakpoint injection, index.html stamping (home title, noindex outside
- * production), and the preact preset with prerendering. Async because Vite
- * awaits promises in the plugins array.
+ * production), and the preact preset with prerendering. With a `site`
+ * section in the config it also serves the site data to
+ * "@airspeed-co/avionics/site", injects the site-wide Open Graph tags, and
+ * emits robots.txt. Async because Vite awaits promises in the plugins array.
  */
 export function avionics(
   options?: AvionicsPluginOptions,
 ): Promise<PluginOption[]>;
+
+/**
+ * The site-data plugin on its own, for a site's vitest config: tests do not
+ * load the full preset, but site code under test still imports
+ * "@airspeed-co/avionics/site".
+ */
+export function avionicsSite(options?: {
+  /**
+   * Config path relative to the working directory.
+   * Default "avionics.config.mjs".
+   */
+  configFile?: string;
+}): Promise<Plugin>;
