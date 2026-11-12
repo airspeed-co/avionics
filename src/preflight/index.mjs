@@ -41,6 +41,9 @@
  *   since avionics sites inject their third-party scripts (gtag) at runtime
  *   and any other script in the HTML was added at the edge by a dashboard
  *   toggle (Cloudflare Web Analytics, Rocket Loader) that nobody reviewed
+ * @property {string} [analyticsMeasurementId] GA4 measurement id the
+ *   deployed bundle must carry; pass "" to fail until one is set, omit to
+ *   skip the check
  * @property {(context: PreflightContext) => Promise<void> | void} [extraChecks]
  *   site-specific checks, run with the shared helpers before the summary
  */
@@ -95,6 +98,7 @@ export async function runPreflight({
   wellKnownFiles = ["/robots.txt", "/sitemap.xml", "/favicon.svg"],
   redirects = {},
   allowedScriptHosts = [],
+  analyticsMeasurementId,
   extraChecks,
 }) {
   const origin = (originOption ?? `https://${productionHost}`).replace(
@@ -361,6 +365,38 @@ export async function runPreflight({
         (insecure.headers.get("location") ?? "").startsWith("https://"),
       "http upgrades to https",
       `${insecure.status} → ${insecure.headers.get("location")}`,
+    );
+  }
+
+  // --- Analytics: the deployed bundle carries the measurement id ---
+  // The gtag script is injected at runtime, so a served JS bundle
+  // containing the id is the only server-side-visible proof that analytics
+  // deployed configured (a blanked id or a dropped module would otherwise
+  // fail silently forever).
+  if (analyticsMeasurementId !== undefined) {
+    const scripts = [...html.matchAll(/src="(\/[^"]+\.js)"/g)].map(
+      ([, path]) => path,
+    );
+
+    let found = false;
+
+    for (const path of scripts) {
+      if (!analyticsMeasurementId) break;
+
+      const body = await (await fetch(`${origin}${path}`)).text();
+
+      if (body.includes(analyticsMeasurementId)) {
+        found = true;
+        break;
+      }
+    }
+
+    report(
+      found,
+      "analytics measurement id shipped in a bundle",
+      analyticsMeasurementId
+        ? `not found in ${scripts.length} script(s)`
+        : "the measurement id is unset",
     );
   }
 

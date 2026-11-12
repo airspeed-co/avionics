@@ -1,0 +1,13 @@
+/* Injected into every page before its screenshot (see ../cli/screens.mjs): ends
+   all animations and transitions so every element sits in its final state.
+   Reduced-motion emulation alone is not enough (a site can keep an opacity
+   fade under reduced motion by design), and Playwright's screenshot option
+   `animations: "disabled"` is not either: in Chromium it strands delayed,
+   backwards-filled animations at opacity 0 instead of fast-forwarding
+   them. */
+*,
+*::before,
+*::after {
+  transition: none !important;
+  animation: none !important;
+}

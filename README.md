@@ -24,6 +24,9 @@ One level deep, one entry per runtime concern. `blocks` and `hooks` are browser-
 | `@airspeed-co/avionics/utils`    | `classNames`, validation factories (required, email, length, words)                                        |
 | `@airspeed-co/avionics/worker`   | `createContactHandler`, `sendEmail`, `verifyTurnstile`, `rewriteOpenGraph`, `ContactEnv`                   |
 | `@airspeed-co/avionics/airframe` | `createSiteEntry`, `definePages`, `enableClientNavigation`                                                 |
+| `@airspeed-co/avionics/config`   | `defineConfig` for `avionics.config.mjs`, `resolveSite`, `localePrefixes`                                  |
+| `@airspeed-co/avionics/site`     | `site`: the identity from the config's `site` section (name, domain, origin, contact details, locales)     |
+| `@airspeed-co/avionics/vite`     | `avionics` (the Vite preset), `avionicsSite` (site data for a vitest config)                               |
 
 ## Airframe
 
@@ -44,6 +47,78 @@ export const { prerender } = createSiteEntry({
   localeOf: (url) => splitLocale(url).locale,
 });
 ```
+
+## One file describes the site
+
+The `site` section of `avionics.config.mjs` is the only place a site's name and domain are written. Everything else derives from it:
+
+```js
+// site: avionics.config.mjs
+import { defineConfig } from "@airspeed-co/avionics/config";
+
+import { endpoints } from "./src/domain/endpoints.ts";
+
+export default defineConfig({
+  site: {
+    name: "Example Co.",
+    domain: "example.com",
+    email: "hello@example.com",
+    phone: "555-555-5555",
+    locales: ["en", "es"], // default locale first; defaults to ["en"]
+  },
+  analytics: { measurementId: "G-XXXXXXXXXX" },
+  preflight: { apiEndpoints: Object.values(endpoints) },
+});
+```
+
+With a `site` section, the Vite preset:
+
+- emits `robots.txt` (delete `public/robots.txt`);
+- injects the site-wide Open Graph and Twitter tags into `index.html` (delete them there; `site.socialImage` overrides the image path, alt text, and size);
+- defaults the sitemap's origin and locale prefixes, so `vite.config.ts` passes only `sitemap: { paths }`;
+- serves the resolved identity to site code, in the browser bundle and the Worker alike:
+
+```ts
+// site: src/config/site.ts
+import { site } from "@airspeed-co/avionics/site";
+
+export const siteName = site.name;
+export const canonicalOrigin = site.origin; // "https://example.com"
+```
+
+Tests do not load the preset, so a site's `vitest.config.ts` adds `avionicsSite()` from `@airspeed-co/avionics/vite` to its plugins. The config is loaded by plain Node, so it can import the site's own `.ts` modules (with the `.ts` extension) to reuse values such as the API endpoints. Editing the `site` section needs a dev server restart.
+
+A config without a `site` section builds exactly as before, so sites adopt it one at a time.
+
+## Commands
+
+The tooling every site shares ships as the `avionics` command, run from the site root and driven by the config, so no site keeps its own copy of these scripts:
+
+| Command                               | What it does                                                                                                               |
+| :------------------------------------ | :------------------------------------------------------------------------------------------------------------------------- |
+| `avionics preflight [origin]`         | Post-deploy smoke checks against production, any origin, or `--preview` (the config's `preflight.previewOrigin`)           |
+| `avionics pagespeed [origin]`         | PageSpeed Insights scores for production or any public origin; needs `PAGESPEED_API_KEY` in `.env`                         |
+| `avionics screens`                    | Screenshot contact sheet of the built site in `screens/`; routes and viewports from the config's `screens` section         |
+| `avionics favicons`                   | Regenerates `favicon-32.png` and `apple-touch-icon.png` from `public/favicon.svg`                                          |
+| `avionics build`                      | The Cloudflare Workers Builds command: `npm run build` on `main`, `npm run build:staging` on every other branch            |
+| `avionics confirm-deploy [--env <n>]` | Prints the worker and domains about to be published and asks first                                                         |
+| `avionics placeholders`               | Fails if `example.com` or `TODO(template)` is left in a tracked file; `placeholders.ignore` in the config lists exceptions |
+
+A site's `package.json` scripts call them:
+
+```json
+{
+  "build:ci": "avionics build",
+  "screens": "npm run build && avionics screens",
+  "deploy": "avionics confirm-deploy && npm run build && wrangler deploy",
+  "preflight": "avionics preflight",
+  "preflight:preview": "avionics preflight --preview",
+  "pagespeed": "avionics pagespeed",
+  "favicons": "avionics favicons"
+}
+```
+
+`screens` and `favicons` use the site's own `playwright` and `sharp`. `placeholders` passes in the template repo itself, where `site.domain` is still `example.com`; add it to a client site's `verify` script.
 
 ## What the site owns
 
