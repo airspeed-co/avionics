@@ -4,7 +4,7 @@ All notable changes to this package are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.21.0] - 2026-11-12
 
 ### Added
 
@@ -23,7 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Sites without a `site` section build as before, so each site adopts this on its own schedule:
 
 1. Add `site` (and `analytics`, `preflight`) to `avionics.config.mjs`. The README has an example.
-2. In `src/config/site.ts`, read the name, origin, email, phone, and measurement id from `site` (`import { site } from "@airspeed-co/avionics/site"`).
+2. In `src/config/site.ts`, read the name, origin, email, phone, and measurement id from `site` (`import { site } from "@airspeed-co/avionics/site"`). `site.email` and `site.phone` are optional, so a site that shows them either renders them only when present or keeps its own constants.
 3. Delete `public/robots.txt` and the Open Graph and Twitter tags in `index.html`.
 4. In `vite.config.ts`, pass only `sitemap: { paths }`.
 5. In `vitest.config.ts`, add `avionicsSite()` to the plugins.
@@ -52,5 +52,6 @@ Initial release, extracted from the airspeed.co website.
 - Cloudflare Worker contact handler: `createContactHandler`, `sendEmail` (Resend), `rewriteOpenGraph`.
 - Five entry points, one level deep, one per runtime concern: `./blocks`, `./domain`, `./hooks`, `./utils`, `./worker`.
 
+[0.21.0]: https://github.com/airspeed-co/avionics/releases/tag/v0.21.0
 [0.2.0]: https://github.com/airspeed-co/avionics/releases/tag/v0.2.0
 [0.1.0]: https://github.com/airspeed-co/avionics/releases/tag/v0.1.0

@@ -1,6 +1,6 @@
 {
   "name": "@airspeed-co/avionics",
-  "version": "0.19.0",
+  "version": "0.21.0",
   "description": "Shared structural core for Airspeed Co. websites: form blocks, validation, head baking, the Cloudflare Worker contact handler, and the site tooling commands. Ships raw Preact + TypeScript source; the consuming site's Vite compiles it.",
   "type": "module",
   "license": "MIT",
