@@ -43,7 +43,71 @@
  */
 
 /**
+ * @typedef {object} SocialImageConfig
+ * @property {string} [path] served path of the Open Graph image, defaulting
+ *   to "/og-image.png"
+ * @property {string} [alt] alt text, defaulting to the site name
+ * @property {number} [width] pixel width, defaulting to 1200
+ * @property {number} [height] pixel height, defaulting to 630
+ */
+
+/**
+ * @typedef {object} SiteConfig
+ * @property {string} name the brand name ("Example Co.")
+ * @property {string} domain apex host of the production site, no scheme or
+ *   path ("example.com")
+ * @property {string} [email] public contact email
+ * @property {string} [phone] public contact phone
+ * @property {string[]} [locales] locale codes, default locale first; the
+ *   first is served unprefixed and every other one under "/<code>".
+ *   Defaults to ["en"]
+ * @property {SocialImageConfig} [socialImage] the Open Graph image
+ */
+
+/**
+ * @typedef {object} AnalyticsConfig
+ * @property {string} [measurementId] GA4 measurement id ("G-XXXXXXXXXX");
+ *   preflight verifies a deployed bundle carries it
+ */
+
+/**
+ * @typedef {object} PreflightConfig
+ * @property {string[]} [apiEndpoints] POST-only API paths that must reject
+ *   GET with 405
+ * @property {Record<string, string[]>} [redirects] launch redirects to
+ *   verify, current path -> previous paths
+ * @property {string[]} [wellKnownFiles] paths that must return 200
+ * @property {string[]} [allowedScriptHosts] hosts the served home page may
+ *   load scripts from, besides its own
+ * @property {string} [previewOrigin] the standing preview deployment
+ *   (`avionics preflight --preview` checks it)
+ * @property {(context: import("../preflight/index.mjs").PreflightContext) => Promise<void> | void} [extraChecks]
+ *   site-specific checks, run before the summary
+ */
+
+/**
+ * @typedef {object} ScreensConfig
+ * @property {{ name: string, path: string }[]} [routes] pages to shoot,
+ *   defaulting to the home page
+ * @property {{ name: string, width: number, height: number }[]} [viewports]
+ *   viewports to shoot at, defaulting to one per breakpoint tier
+ */
+
+/**
+ * @typedef {object} PlaceholdersConfig
+ * @property {string[]} [ignore] tracked paths (files, or directories ending
+ *   in "/") that `avionics placeholders` skips
+ */
+
+/**
  * @typedef {object} AvionicsConfig
+ * @property {SiteConfig} [site] the site's identity; the single place the
+ *   name and domain are written (see resolveSite)
+ * @property {AnalyticsConfig} [analytics] Google Analytics
+ * @property {PreflightConfig} [preflight] inputs for `avionics preflight`
+ * @property {ScreensConfig} [screens] inputs for `avionics screens`
+ * @property {PlaceholdersConfig} [placeholders] inputs for
+ *   `avionics placeholders`
  * @property {ImagesConfig} [images] the image pipeline (see ../images)
  * @property {PrerenderConfig} [prerender] prerendering, wired through the
  *   preact preset by the Vite plugin (see ../vite)
@@ -61,3 +125,81 @@
  * @param {AvionicsConfig} config
  */
 export const defineConfig = (config) => config;
+
+/**
+ * @typedef {object} Site the resolved site identity: the config's `site`
+ *   section with defaults applied and the values derived from it. This is
+ *   what the build stamps into pages and what site code imports from
+ *   "@airspeed-co/avionics/site".
+ * @property {string} name
+ * @property {string} domain
+ * @property {string} origin canonical production origin, no trailing slash
+ * @property {string} [email]
+ * @property {string} [phone]
+ * @property {string[]} locales
+ * @property {Required<SocialImageConfig>} socialImage
+ * @property {string} [analyticsMeasurementId]
+ */
+
+/**
+ * Each locale's home prefix: the first (default) locale is unprefixed, every
+ * other one lives under its code (["en", "es"] -> ["/", "/es"]).
+ *
+ * @param {string[]} locales
+ */
+export const localePrefixes = (locales) =>
+  locales.map((locale, index) => (index === 0 ? "/" : `/${locale}`));
+
+/**
+ * Resolves the config's `site` section into the identity everything else
+ * derives from, or undefined for a config without one (sites that have not
+ * adopted it yet). Throws on a malformed section, since a typo here would
+ * otherwise be stamped into every page.
+ *
+ * @param {AvionicsConfig} config
+ * @returns {Site | undefined}
+ */
+export function resolveSite(config) {
+  const site = config.site;
+
+  if (!site) return undefined;
+
+  if (typeof site.name !== "string" || site.name.trim() === "") {
+    throw new Error("avionics config: site.name must be a non-empty string");
+  }
+
+  if (
+    typeof site.domain !== "string" ||
+    !/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/.test(
+      site.domain,
+    )
+  ) {
+    throw new Error(
+      `avionics config: site.domain must be a bare lowercase host like "example.com", got "${site.domain}"`,
+    );
+  }
+
+  const locales = site.locales ?? ["en"];
+
+  if (!Array.isArray(locales) || locales.length === 0) {
+    throw new Error("avionics config: site.locales must list a locale");
+  }
+
+  const measurementId = config.analytics?.measurementId;
+
+  return {
+    name: site.name,
+    domain: site.domain,
+    origin: `https://${site.domain}`,
+    ...(site.email && { email: site.email }),
+    ...(site.phone && { phone: site.phone }),
+    locales,
+    socialImage: {
+      path: site.socialImage?.path ?? "/og-image.png",
+      alt: site.socialImage?.alt ?? site.name,
+      width: site.socialImage?.width ?? 1200,
+      height: site.socialImage?.height ?? 630,
+    },
+    ...(measurementId && { analyticsMeasurementId: measurementId }),
+  };
+}
