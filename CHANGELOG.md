@@ -4,6 +4,18 @@ All notable changes to this package are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `@airspeed-co/avionics/stylelint`: the CSS property order every site shared as its own copy of `stylelint.config.mjs`. `stylelint-order` and `stylelint-config-recess-order` ship with this package, so a site only keeps `stylelint` itself.
+
+### Adopting it in a site
+
+1. Replace `stylelint.config.mjs` with `export { default } from "@airspeed-co/avionics/stylelint";`, or spread it to keep the site's own rules (see the README).
+2. Drop `stylelint-order` and `stylelint-config-recess-order` from the site's `devDependencies`.
+3. Run `npm run lint:css` and confirm it still reports what it did before.
+
 ## [0.21.0] - 2026-11-12
 
 ### Added

@@ -16,17 +16,18 @@ npm install @airspeed-co/avionics preact preact-iso
 
 One level deep, one entry per runtime concern. `blocks` and `hooks` are browser-only (preact, CSS); `domain` and `utils` are pure and safe in both runtimes; `worker` is worker-only. They stay separate so the Worker bundle never pulls preact or CSS, and importing a helper never drags block styles along.
 
-| Import                           | Contents                                                                                                   |
-| :------------------------------- | :--------------------------------------------------------------------------------------------------------- |
-| `@airspeed-co/avionics/blocks`   | `Button`, `Form`, `FormField`, `Picture`                                                                   |
-| `@airspeed-co/avionics/domain`   | `FieldConfig`, `Validation`, `validateForm`, `buildContactFormFields`, contact form types                  |
-| `@airspeed-co/avionics/hooks`    | `useTitle`, `useDescription`, `useJsonLd`, `useNoindex`, `useAlternateLanguage`, prerender capture helpers |
-| `@airspeed-co/avionics/utils`    | `classNames`, validation factories (required, email, length, words)                                        |
-| `@airspeed-co/avionics/worker`   | `createContactHandler`, `sendEmail`, `verifyTurnstile`, `rewriteOpenGraph`, `ContactEnv`                   |
-| `@airspeed-co/avionics/airframe` | `createSiteEntry`, `definePages`, `enableClientNavigation`                                                 |
-| `@airspeed-co/avionics/config`   | `defineConfig` for `avionics.config.mjs`, `resolveSite`, `localePrefixes`                                  |
-| `@airspeed-co/avionics/site`     | `site`: the identity from the config's `site` section (name, domain, origin, contact details, locales)     |
-| `@airspeed-co/avionics/vite`     | `avionics` (the Vite preset), `avionicsSite` (site data for a vitest config)                               |
+| Import                            | Contents                                                                                                   |
+| :-------------------------------- | :--------------------------------------------------------------------------------------------------------- |
+| `@airspeed-co/avionics/blocks`    | `Button`, `Form`, `FormField`, `Picture`                                                                   |
+| `@airspeed-co/avionics/domain`    | `FieldConfig`, `Validation`, `validateForm`, `buildContactFormFields`, contact form types                  |
+| `@airspeed-co/avionics/hooks`     | `useTitle`, `useDescription`, `useJsonLd`, `useNoindex`, `useAlternateLanguage`, prerender capture helpers |
+| `@airspeed-co/avionics/utils`     | `classNames`, validation factories (required, email, length, words)                                        |
+| `@airspeed-co/avionics/worker`    | `createContactHandler`, `sendEmail`, `verifyTurnstile`, `rewriteOpenGraph`, `ContactEnv`                   |
+| `@airspeed-co/avionics/airframe`  | `createSiteEntry`, `definePages`, `enableClientNavigation`                                                 |
+| `@airspeed-co/avionics/config`    | `defineConfig` for `avionics.config.mjs`, `resolveSite`, `localePrefixes`                                  |
+| `@airspeed-co/avionics/site`      | `site`: the identity from the config's `site` section (name, domain, origin, contact details, locales)     |
+| `@airspeed-co/avionics/vite`      | `avionics` (the Vite preset), `avionicsSite` (site data for a vitest config)                               |
+| `@airspeed-co/avionics/stylelint` | The shared CSS property order, as a stylelint config                                                       |
 
 ## Airframe
 
@@ -119,6 +120,41 @@ A site's `package.json` scripts call them:
 ```
 
 `screens` and `favicons` use the site's own `playwright` and `sharp`. `placeholders` passes in the template repo itself, where `site.domain` is still `example.com`; add it to a client site's `verify` script.
+
+## One property order
+
+Every site sorts its CSS properties the same way, and stylelint holds the line instead of habit: the Recess order merged into three stanzas (layout and box, text, surface and the rest) with a blank line between them, and whatever Recess does not know, custom properties included, collected in a last stanza of its own rather than failing the lint.
+
+A site re-exports it unchanged:
+
+```js
+// site: stylelint.config.mjs
+export { default } from "@airspeed-co/avionics/stylelint";
+```
+
+Or spreads it and adds rules of its own:
+
+```js
+// site: stylelint.config.mjs
+import avionics from "@airspeed-co/avionics/stylelint";
+
+export default {
+  ...avionics,
+  rules: {
+    ...avionics.rules,
+    "color-no-hex": true,
+  },
+};
+```
+
+`stylelint-order` and `stylelint-config-recess-order` ship with avionics. The site brings its own `stylelint` and calls it from its scripts:
+
+```json
+{
+  "lint:css": "stylelint \"src/**/*.css\"",
+  "lint:css:fix": "stylelint \"src/**/*.css\" --fix"
+}
+```
 
 ## What the site owns
 
