@@ -4,7 +4,7 @@ All notable changes to this package are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.23.0] - 2026-11-22
 
 ### Added
 
@@ -79,6 +79,7 @@ Initial release, extracted from the airspeed.co website.
 - Cloudflare Worker contact handler: `createContactHandler`, `sendEmail` (Resend), `rewriteOpenGraph`.
 - Five entry points, one level deep, one per runtime concern: `./blocks`, `./domain`, `./hooks`, `./utils`, `./worker`.
 
+[0.23.0]: https://github.com/airspeed-co/avionics/releases/tag/v0.23.0
 [0.22.0]: https://github.com/airspeed-co/avionics/releases/tag/v0.22.0
 [0.21.0]: https://github.com/airspeed-co/avionics/releases/tag/v0.21.0
 [0.2.0]: https://github.com/airspeed-co/avionics/releases/tag/v0.2.0
