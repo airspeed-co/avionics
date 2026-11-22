@@ -32,6 +32,14 @@ export interface ContactHandlerOptions {
    * inbox.
    */
   subject?: (submission: { name: string; email: string }) => string;
+  /**
+   * Body text for a form whose field list has no message of its own (a
+   * newsletter signup, say, where the address is the whole submission).
+   * Written here rather than sent by the browser, so the sentence in the
+   * inbox is the server's and not the visitor's. Ignored once the
+   * submission carries a message.
+   */
+  message?: string;
 }
 
 /**
@@ -96,9 +104,15 @@ export function createContactHandler(
     const name = payload.name?.trim() ?? "";
     const email = payload.email?.trim() ?? "";
     const phone = payload.phone?.trim() ?? "";
-    const message = payload.message?.trim() ?? "";
+    const message = payload.message?.trim() || options.message || "";
 
-    const lines = [`Name: ${name}`];
+    // Each detail line is left out when the form did not collect it, so a
+    // one-field signup does not arrive with empty labels above its body.
+    const lines: string[] = [];
+
+    if (name) {
+      lines.push(`Name: ${name}`);
+    }
 
     if (email) {
       lines.push(`Email: ${email}`);

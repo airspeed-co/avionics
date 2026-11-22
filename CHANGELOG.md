@@ -4,6 +4,21 @@ All notable changes to this package are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `@airspeed-co/avionics/blocks` exports `useForm` and `useTurnstile`, the logic behind the `Form` block. A form whose shape differs from `Form`'s stacked field list (an inline signup, say) builds its own markup on them instead of fighting `Form`'s with CSS. `Form` itself is unchanged.
+- `createContactHandler` takes a `message` option: body text for a form whose field list carries no message of its own, written on the server rather than sent by the browser.
+
+### Fixed
+
+- `createContactHandler` left a bare `Name:` line in the email when the form did not collect a name. The name now follows the same rule the email and phone lines already did, so a one-field signup arrives without empty labels above its body.
+
+### Adopting it in a site
+
+Nothing to do: both changes are additions, and the `Name:` line only disappears for a form that never collected one.
+
 ## [0.22.0] - 2026-11-19
 
 ### Added

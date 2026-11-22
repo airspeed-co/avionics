@@ -18,7 +18,7 @@ One level deep, one entry per runtime concern. `blocks` and `hooks` are browser-
 
 | Import                            | Contents                                                                                                   |
 | :-------------------------------- | :--------------------------------------------------------------------------------------------------------- |
-| `@airspeed-co/avionics/blocks`    | `Button`, `Form`, `FormField`, `Picture`                                                                   |
+| `@airspeed-co/avionics/blocks`    | `Button`, `Form`, `FormField`, `Picture`, `useForm`, `useTurnstile`                                        |
 | `@airspeed-co/avionics/domain`    | `FieldConfig`, `Validation`, `validateForm`, `buildContactFormFields`, contact form types                  |
 | `@airspeed-co/avionics/hooks`     | `useTitle`, `useDescription`, `useJsonLd`, `useNoindex`, `useAlternateLanguage`, prerender capture helpers |
 | `@airspeed-co/avionics/utils`     | `classNames`, validation factories (required, email, length, words)                                        |
@@ -163,6 +163,30 @@ export default {
 - `Button`: `.button`, `.button-primary`, `.button-inverted`
 - `Form`: `.form`, `.form-submit`, `.form-error`, `.form-success`, `.form-turnstile` (empty unless the bot check needs a click; give it a margin)
 - `FormField`: `.field`, `.field-error`, `.field-error-message`
+
+**Form markup, when the class hooks are not enough.** `Form` owns its structure as well as its behavior: a stacked list of labelled fields above a text `Button`. A form shaped differently (an inline signup whose field and icon button sit on one line, say) is not a styling problem, so skin `Form` into it and the markup fights back. Reach past the block instead and build the shell in the site, on the same logic `Form` runs on:
+
+```tsx
+// site: a one-field signup, its own markup, nothing faked in CSS
+const getToken = useTurnstile(turnstileSiteKey, turnstileContainer);
+const {
+  form,
+  showError,
+  status,
+  serverError,
+  setField,
+  blurField,
+  handleSubmit,
+} = useForm({
+  fields,
+  endpoint,
+  errorFallback,
+  getToken,
+  verificationFailedMessage,
+});
+```
+
+`useForm` owns the state, the validation timing (reward early, punish late) and the submit; `useTurnstile` owns the bot check. The site owns the elements, the class names and the copy. Use `Form` when the shape fits; it is the common case and stays the default.
 
 **Images.** `Picture` renders one manifest entry; pass `sources` (`{ name, media, sizes? }`) for art direction, each a separate manifest entry with its own crop (two entries may share a source file), rendered as `<source media>` groups the browser resolves before fetching. Manifest drift (an entry whose file is missing, a file no entry claims) fails the build; the dev server warns instead, prints an entry to paste for each unclaimed file, and keeps serving the last good manifest when a regeneration fails.
 
